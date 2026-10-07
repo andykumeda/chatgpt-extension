@@ -4,6 +4,8 @@ A focused macOS prototype: Chrome MV3 side panel -> Chrome native messaging -> l
 
 ## Install
 
+For the downloadable macOS bundle, see [Releases](https://github.com/andykumeda/chatgpt-extension/releases) and [INSTALL.md](INSTALL.md). GitHub downloads require access to this private repository.
+
 Prerequisites: macOS, Chrome 116+, Node.js 22+, and a working Codex CLI (tested with 0.160.0).
 
 Clone [this repository](https://github.com/andykumeda/chatgpt-extension) into a local folder outside Documents/iCloud, then open a terminal in the checkout:
@@ -51,6 +53,8 @@ No build step or npm dependencies are required. Rerun the installer after moving
 Installed implementation inspection used `codex --version`, `codex app-server --help`, `codex features list`, and `codex app-server generate-json-schema --out schemas`. Generated schemas are ignored local artifacts. No private Desktop socket, extension handshake, chat database schema, undocumented originator workaround, or application patch is part of this implementation. The prior Desktop-vs-official-extension workspace observation is background only; this prototype supplies `cwd` explicitly.
 
 ## Verification
+
+Maintainers can run `npm run bundle` from a clean committed checkout to create a source-only ZIP and SHA-256 checksum under `output/releases`. No local runtime state or Git history is included.
 
 Run `npm test` for filesystem boundaries, symlink escapes, native framing, chat ownership/recovery, and page payload limits. Run `npm run check` for JavaScript syntax and narrow manifest assertions. `npm run probe` starts a real Codex child and tests a workspace write plus a denied Documents write. `node scripts/live-smoke.mjs` runs real synthetic-page chat, streaming, bridge restart, conversation resume and workspace-file tests. These live commands need normal local Codex/network access.
 

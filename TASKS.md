@@ -11,4 +11,8 @@ States: Not started, In progress, Blocked, Verified, Deployed.
 
 ## Current state
 
+## Downloadable bundle
+
+State: In progress. Scope: macOS source ZIP plus checksum and private GitHub prerelease. Files: scripts/bundle.mjs, package.json, INSTALL.md, README.md. Verification: clean committed archive, extracted tests/checks, isolated installer smoke, asset metadata and checksum. No Node/Codex runtime, credentials, chat history or local native-host configuration will be shipped. Another physical Mac is not available for live verification.
+
 Prototype implemented and verified locally. Private GitHub repository: https://github.com/andykumeda/chatgpt-extension. Source is pushed on main; no production deployment. No official application, official extension, unrelated settings or existing chat database modified. Implementation and test scratch live in `/Users/andy/Dev/chatgpt-extension`. Normal Chrome prototype host: `~/Library/Application Support/Google/Chrome/NativeMessagingHosts/com.local_codex.sidepanel.json`. Normal prototype runtime: `~/.codex/local-sidepanel`; SQLite/logs explicitly isolated. Codex manages auth and creates its own new local session rollouts. Test profile/state are under this checkout. Superseded incorrect test-host registration was removed without touching the official host. See VERIFICATION.md for actual passing checks and compatibility limitations, including unrestricted model reads and the failed/replaced Playwright side-panel attempt.
