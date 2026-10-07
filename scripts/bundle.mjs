@@ -15,7 +15,7 @@ const name = `local-codex-sidepanel-${version}-macos`;
 const output = policy.create(path.join(project, 'output/releases'));
 const zip = policy.safeFuture(path.join(output, `${name}.zip`));
 const checksum = policy.safeFuture(`${zip}.sha256`);
-const files = ['.gitignore', 'package.json', 'README.md', 'INSTALL.md', 'PLAN.md', 'TASKS.md', 'VERIFICATION.md', 'bridge', 'extension', 'scripts', 'tests'];
+const files = ['.gitignore', 'package.json', 'README.md', 'INSTALL.md', 'PLAN.md', 'BROWSER.md', 'TASKS.md', 'VERIFICATION.md', 'bridge', 'extension', 'scripts', 'tests'];
 // Git archive cannot include ignored runtime state, credentials, or local chat history.
 execFileSync('git', ['archive', '--format=zip', `--prefix=${name}/`, `--output=${zip}`, 'HEAD', '--', ...files], { cwd: project, stdio: 'inherit' });
 const hash = createHash('sha256').update(fs.readFileSync(zip)).digest('hex');

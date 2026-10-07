@@ -41,7 +41,7 @@ try {
       catch (error) { send({ id: message.id, error: error.message }); }
     };
     // Interrupt must bypass the normal request queue while a slow request is in progress.
-    if (message.method === 'stop') void execute(); else queued = queued.then(execute);
+    if (['stop', 'browserResult'].includes(message.method)) void execute(); else queued = queued.then(execute);
   }, () => { shutdown(); process.exit(1); });
   process.stdin.on('data', receive);
   process.stdin.on('end', () => { shutdown(); process.exit(0); });

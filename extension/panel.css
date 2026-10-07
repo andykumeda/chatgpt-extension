@@ -38,4 +38,7 @@ textarea { resize: vertical; min-height: 66px; max-height: 160px; line-height: 1
 summary { cursor: pointer; font-size: 11px; color: #65716a; margin-top: 6px; }
 pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 120px; overflow: auto; font: 11px/1.4 system-ui; }
 [hidden] { display: none !important; }
+#browserApproval { border-left: 3px solid #24694c; padding-left: 10px; margin-bottom: 12px; }
+#browserAction { max-height: 180px; }
+#browserTarget { margin: 0; min-width: 0; }
 @media (max-width: 320px) { header, .settings, main, footer { padding-left: 10px; padding-right: 10px; } .tools { gap: 6px; } }

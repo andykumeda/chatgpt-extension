@@ -24,4 +24,4 @@
 
 ## Deferred
 
-Autonomous browser control, importing other extensions' chats, full Desktop parity, packaging/distribution, non-macOS support.
+Importing other extensions' chats, full Desktop parity, non-macOS support. Packaging/distribution completed in v0.1.0. Live browser reading and scoped actions were explicitly requested after v0.1.0; see BROWSER.md for the new implementation gates.

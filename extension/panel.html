@@ -23,6 +23,11 @@
       <details><summary id="pageSummary">Page preview</summary><pre id="pagePreview"></pre></details>
     </section>
     <div class="row tools"><button id="attachPage">Attach current page</button><label class="toggle"><input id="allowEdits" type="checkbox">Allow workspace edits</label></div>
+    <div class="row tools"><label class="toggle"><input id="allowBrowser" type="checkbox">Live browser this turn</label><span id="browserTarget" class="path"></span></div>
+    <section id="browserApproval" aria-label="Browser action approval" hidden>
+      <strong>Approve browser action?</strong><pre id="browserAction"></pre>
+      <div class="row"><button id="denyBrowser" type="button">Deny</button><button id="approveBrowser" type="button">Allow once</button></div>
+    </section>
     <form id="sendForm">
       <textarea id="prompt" aria-label="Message to Codex" placeholder="Ask Codex..." rows="3" maxlength="16000" required></textarea>
       <div class="row"><span id="state" role="status">Ready</span><button id="stop" type="button" hidden>Stop</button><button id="send" type="submit" disabled>Send</button></div>

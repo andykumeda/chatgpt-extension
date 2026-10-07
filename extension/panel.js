@@ -1,9 +1,38 @@
 import { capturePage } from './capture.js';
+import { LiveBrowser } from './browser.js';
 
 const $ = id => document.getElementById(id);
 let port, connected = false, authenticated = false, busy = false, current = null, page = null, nextId = 1;
 const pending = new Map();
 let assistantBody = null, itemId = null;
+const browser = new LiveBrowser();
+let browserApproval = null, startupError = null;
+function endBrowser() {
+  browser.disable();
+  browserApproval?.resolve(false); browserApproval = null;
+  $('browserApproval').hidden = true; $('browserTarget').textContent = '';
+}
+function approveBrowser(details) {
+  if (browserApproval) return Promise.resolve(false);
+  $('browserAction').textContent = `${details.operation.operation.toUpperCase()}\nPage: ${details.pageUrl}\n${details.element ? `Element: ${details.element.label || details.element.ref}\n` : ''}${details.operation.text ? `Text: ${details.operation.text}\n` : ''}${details.destination ? `Destination: ${details.destination}\n` : ''}${details.requestOrigin ? `Website access: ${details.requestOrigin}` : ''}`;
+  $('browserApproval').hidden = false;
+  $('state').textContent = 'Awaiting browser approval';
+  return new Promise(resolve => { browserApproval = { ...details, resolve }; });
+}
+$('denyBrowser').addEventListener('click', () => {
+  browserApproval?.resolve(false); browserApproval = null; $('browserApproval').hidden = true;
+});
+$('approveBrowser').addEventListener('click', async () => {
+  const approval = browserApproval;
+  if (!approval) return;
+  $('approveBrowser').disabled = true;
+  try {
+    // Website permissions require this actual user gesture, not a model request.
+    const granted = !approval.requestOrigin || await chrome.permissions.request({ origins: [approval.requestOrigin] });
+    if (browserApproval === approval) approval.resolve(granted);
+  } catch { approval.resolve(false); }
+  finally { if (browserApproval === approval) browserApproval = null; $('approveBrowser').disabled = false; $('browserApproval').hidden = true; }
+});
 
 function fail(message) { $('error').textContent = message; $('error').hidden = false; }
 function clearError() { $('error').hidden = true; }
@@ -14,6 +43,7 @@ function controls() {
   $('newChat').disabled = busy || !connected;
   $('applyWorkspace').disabled = busy;
   $('connect').disabled = busy;
+  $('allowBrowser').disabled = busy;
 }
 function setState(status) { $('state').textContent = status; busy = ['Starting', 'Running', 'Stopping'].includes(status); controls(); }
 function request(method, params = {}) {
@@ -48,8 +78,21 @@ async function refreshChats() {
   $('chats').value = current?.id || '';
 }
 function events(message) {
-  if (message.event === 'fatal') { fail(message.message); return; }
+  if (message.event === 'fatal') { startupError = message.message; fail(message.message); return; }
+  if (message.event === 'browserRequest') {
+    const execute = async () => {
+      let success = false, result;
+      try {
+        if (!busy || message.chatId !== current?.id) throw new Error('This chat has no active browser grant.');
+        result = await browser.run(message.operation, approveBrowser); success = true;
+      } catch (error) { result = { error: error.message }; }
+      if (port) await request('browserResult', { requestId: message.requestId, success, result }).catch(() => {});
+      if (busy) $('state').textContent = 'Running';
+    };
+    void execute(); return;
+  }
   if (message.event === 'connection') {
+    endBrowser();
     connected = false; authenticated = false; $('connection').textContent = 'Disconnected';
     setState('Interrupted'); fail(message.message); return;
   }
@@ -71,10 +114,11 @@ function events(message) {
   if (message.event === 'state') {
     setState(({ running: 'Running', completed: 'Completed', interrupted: 'Interrupted', error: 'Error' })[message.status] || message.status);
     if (message.message) fail(message.message);
-    if (!busy) refreshChats().catch(error => fail(error.message));
+    if (!busy) { endBrowser(); refreshChats().catch(error => fail(error.message)); }
   }
 }
 async function connect() {
+  endBrowser(); startupError = null;
   clearError();
   if (port) port.disconnect();
   port = chrome.runtime.connectNative('com.local_codex.sidepanel');
@@ -89,9 +133,11 @@ async function connect() {
     } else events(message);
   });
   port.onDisconnect.addListener(() => {
-    const error = chrome.runtime.lastError?.message || 'Native bridge disconnected.';
+    const runtimeError = chrome.runtime.lastError?.message;
+    const error = startupError || runtimeError || 'Native bridge disconnected.';
     if (port !== thisPort) return;
     port = null; connected = false; authenticated = false;
+    endBrowser();
     $('connection').textContent = 'Disconnected'; setState('Interrupted');
     for (const entry of pending.values()) { clearTimeout(entry.timer); entry.reject(new Error(error)); }
     pending.clear();
@@ -126,6 +172,7 @@ $('workspaceForm').addEventListener('submit', async event => {
   } catch (error) { fail(error.message); }
 });
 $('newChat').addEventListener('click', () => {
+  endBrowser(); $('allowBrowser').checked = false;
   current = null; $('chats').value = ''; $('chatWorkspace').textContent = ''; $('allowEdits').checked = false; resetMessages(); clearError(); setState('Ready');
 });
 $('chats').addEventListener('change', () => {
@@ -151,18 +198,24 @@ $('sendForm').addEventListener('submit', async event => {
   const text = $('prompt').value.trim(); if (!text) return;
   clearError(); setState('Starting');
   try {
+    if ($('allowBrowser').checked) {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      const target = await browser.enable(tab);
+      $('browserTarget').textContent = target.title;
+    }
     if (!current) {
       const result = await request('new', { workspace: $('workspace').value }); current = result.chat; resetMessages();
       $('chatWorkspace').textContent = `Chat workspace: ${current.workspace}`;
     }
     appendMessage('user', text, page); assistantBody = null; itemId = null;
-    const result = await request('send', { id: current.id, text, page, allowEdits: $('allowEdits').checked });
-    $('prompt').value = ''; $('removePage').click(); $('allowEdits').checked = false;
+    const result = await request('send', { id: current.id, text, page, allowEdits: $('allowEdits').checked, allowBrowser: $('allowBrowser').checked });
+    $('prompt').value = ''; $('removePage').click(); $('allowEdits').checked = false; $('allowBrowser').checked = false;
     if (['starting', 'running'].includes(result.status)) setState('Running');
     await refreshChats();
-  } catch (error) { setState('Error'); fail(error.message); }
+  } catch (error) { endBrowser(); setState('Error'); fail(startupError || error.message); }
 });
 $('stop').addEventListener('click', async () => {
+  endBrowser();
   try { await request('stop'); if (busy) setState('Stopping'); } catch (error) { fail(error.message); }
 });
 connect();

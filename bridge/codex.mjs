@@ -4,7 +4,7 @@ import readline from 'node:readline';
 import path from 'node:path';
 
 export class CodexClient extends EventEmitter {
-  constructor({ binary, cwd, state, codexHome, scratch }) {
+  constructor({ binary, cwd, state, codexHome, scratch, toolHandler }) {
     super();
     this.pending = new Map();
     this.nextId = 1;
@@ -51,6 +51,13 @@ export class CodexClient extends EventEmitter {
         if (message.error) entry.reject(new Error(message.error.message || 'Codex request failed.'));
         else entry.resolve(message.result);
       } else if (message.id !== undefined) {
+        if (message.method === 'item/tool/call' && toolHandler) {
+          Promise.resolve().then(() => toolHandler(message.params)).then(
+            result => this.child.stdin.write(`${JSON.stringify({ id: message.id, result })}\n`),
+            () => this.child.stdin.write(`${JSON.stringify({ id: message.id, result: { success: false, contentItems: [{ type: 'inputText', text: 'Browser tool failed or was denied. Do not retry automatically.' }] } })}\n`),
+          ).catch(() => {});
+          return;
+        }
         // Fail closed: pages cannot authorize approvals, external tools, or auth-token refresh.
         this.child.stdin.write(`${JSON.stringify({ id: message.id, error: { code: -32601, message: 'Unsupported by local side-panel prototype; request denied.' } })}\n`);
         this.emit('denied', message.method);
@@ -81,8 +88,8 @@ export class CodexClient extends EventEmitter {
     });
   }
 
-  async initialize() {
-    const result = await this.request('initialize', { clientInfo: { name: 'local_codex_sidepanel', title: 'Local Codex Side Panel', version: '0.1.0' } });
+  async initialize(experimentalApi = false) {
+    const result = await this.request('initialize', { clientInfo: { name: 'local_codex_sidepanel', title: 'Local Codex Side Panel', version: '0.2.0' }, capabilities: { experimentalApi } });
     this.child.stdin.write(`${JSON.stringify({ method: 'initialized', params: {} })}\n`);
     return result;
   }
