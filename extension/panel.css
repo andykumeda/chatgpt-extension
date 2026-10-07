@@ -1,0 +1,41 @@
+:root { font-family: system-ui, -apple-system, sans-serif; font-size: 13px; color: #202523; background: #fff; color-scheme: light; }
+* { box-sizing: border-box; }
+body { margin: 0; height: 100vh; display: flex; flex-direction: column; min-width: 260px; }
+header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid #dfe5e1; }
+header strong { font-size: 17px; display: block; }
+#connection { display: block; margin-top: 4px; color: #66736b; font-size: 12px; }
+button, input, select, textarea { font: inherit; border: 1px solid #c6d0ca; border-radius: 5px; }
+button { background: #f5f7f6; color: #283c30; min-height: 34px; padding: 6px 10px; cursor: pointer; flex-shrink: 0; }
+button:hover { background: #e9eeeb; }
+button:disabled { opacity: .45; cursor: default; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid #27846b; outline-offset: 2px; }
+input, select, textarea { background: #fff; color: #202523; padding: 8px; min-width: 0; width: 100%; }
+.row { display: flex; gap: 8px; align-items: center; min-width: 0; }
+.row > select, .row > input { flex: 1; }
+.settings { padding: 12px 16px; border-bottom: 1px solid #dfe5e1; }
+.settings label { display: block; font-size: 12px; margin-bottom: 6px; color: #57655c; }
+.settings .row + .row { margin-top: 10px; }
+.path { font-size: 11px; color: #66736b; overflow-wrap: anywhere; margin-top: 7px; }
+#chatWorkspace:empty { display: none; }
+#error { background: #fff0f0; color: #8f2525; padding: 10px 16px; border-bottom: 1px solid #eec5c5; overflow-wrap: anywhere; flex-shrink: 0; max-height: 25vh; overflow: auto; }
+main { flex: 1; min-height: 60px; overflow: auto; padding: 16px; }
+#empty { color: #7a837e; text-align: center; margin-top: 25px; }
+.message { padding: 0 0 18px; overflow-wrap: anywhere; }
+.message .role { font-size: 11px; text-transform: uppercase; font-weight: 650; color: #607168; margin-bottom: 6px; }
+.message.user .role { color: #936328; }
+.message .body { white-space: pre-wrap; line-height: 1.55; }
+.message .source { margin-top: 6px; font-size: 11px; color: #66736b; }
+footer { padding: 12px 16px; border-top: 1px solid #dfe5e1; background: #fafcfb; max-height: 50vh; overflow: auto; flex-shrink: 0; }
+.tools { flex-wrap: wrap; margin-bottom: 10px; justify-content: space-between; }
+.toggle { display: flex; gap: 5px; align-items: center; font-size: 11px; color: #5b685f; }
+.toggle input { width: 15px; height: 15px; accent-color: #267254; }
+textarea { resize: vertical; min-height: 66px; max-height: 160px; line-height: 1.5; display: block; }
+#sendForm > .row { margin-top: 8px; }
+#state { flex: 1; font-size: 12px; color: #57655c; overflow-wrap: anywhere; }
+#send { background: #24694c; color: #fff; border-color: #24694c; min-width: 58px; }
+#attachment { border-left: 3px solid #bc8a3b; padding: 0 0 0 10px; margin-bottom: 12px; }
+#pageTitle { font-size: 12px; flex: 1; overflow-wrap: anywhere; min-width: 0; }
+summary { cursor: pointer; font-size: 11px; color: #65716a; margin-top: 6px; }
+pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 120px; overflow: auto; font: 11px/1.4 system-ui; }
+[hidden] { display: none !important; }
+@media (max-width: 320px) { header, .settings, main, footer { padding-left: 10px; padding-right: 10px; } .tools { gap: 6px; } }
