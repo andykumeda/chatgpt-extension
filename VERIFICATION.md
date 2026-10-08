@@ -91,3 +91,9 @@ See [BROWSER.md](BROWSER.md) for the updated capability matrix and actual tests.
 - All four release assets downloaded anonymously; bytes/SHA-256 match GitHub asset digests and published checksum files. Source archive's commit comment matches the release commit; executable install.sh preserved; runtime/Git/auth/config/chat files absent.
 - Actual downloaded source ZIP: 39/39 tests, syntax/manifest checks and isolated-home installer passed. Fresh anonymous HTTPS clone: tests/checks, ./install.sh and npm run update passed. Fake Codex executable used for installation testing; no real sign-in, model inference or user native-host registration changed.
 - Source updater's fast-forward and divergence/dirty/active-host safeguards are covered by the local two-version Git integration. Chrome unpacked extension still needs manual Reload. Cross-machine installation and deferred Intel companion execution remain unverified.
+
+## Restricted pages 0.3.1 — 2026-10-08
+
+MacBook user confirmed Extensions/Settings/New Tab was active. Chrome documentation states activeTab is not granted for chrome:// pages (https://developer.chrome.com/docs/extensions/develop/concepts/activeTab). Existing code injected before validating the page and wrapped the restriction as a toolbar-grant error, blocking every send.
+
+42/42 tests and syntax checks pass. Added capture tests ensure known restricted tabs skip injection and return null, Chrome restricted-page errors with withheld URL return null, and HTTP(S) permission errors/missing content still throw. Panel smoke verifies normal chat sends page:null on restricted tabs without previous website text; live-browser attempts there preserve draft without sending; returning to a website captures fresh context. Existing model/settings/layout/compatibility tests still pass. No real MacBook interaction or inference request was performed; hosted publication verification follows.

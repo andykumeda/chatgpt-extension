@@ -1,4 +1,4 @@
-import { capturePage } from './capture.js';
+import { captureActivePage } from './capture.js';
 import { LiveBrowser } from './browser.js';
 import distribution from './distribution.js';
 
@@ -228,10 +228,14 @@ async function captureCurrentPage() {
   $('pagePreview').textContent = '';
   $('pageUrl').textContent = '';
   try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.id) throw new Error('No active webpage.');
-    const [{ result }] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: capturePage });
-    if (!/^https?:\/\//i.test(result.url)) throw new Error('Only HTTP(S) webpages can be attached.');
+    const result = await captureActivePage();
+    if (!result) {
+      $('pageTitle').textContent = 'No page attached';
+      $('pageTitle').title = 'Chrome internal pages and the Web Store cannot be attached.';
+      $('pageSummary').textContent = 'Chat is available here without page context. Open a normal website to attach its current page automatically.';
+      return null;
+    }
+    $('pageTitle').title = 'The current page is attached automatically';
     page = result;
     $('pageTitle').textContent = page.title || 'Current page'; $('pageUrl').textContent = page.url;
     $('pageSummary').textContent = `${page.text.length.toLocaleString()} characters${page.truncated ? ' (truncated)' : ''}${page.selectedText ? ' / selection included' : ''}`;
@@ -240,7 +244,7 @@ async function captureCurrentPage() {
   } catch (error) {
     $('pageTitle').textContent = 'Page unavailable';
     $('pageSummary').textContent = 'Click the Local Codex toolbar icon on this webpage to grant Chrome access.';
-    throw new Error(`Cannot automatically attach the current page. Click the Local Codex toolbar icon on the current HTTP(S) tab to grant access, then send again. Chrome internal pages and the Web Store are restricted. ${error.message}`);
+    throw new Error(`Cannot automatically attach the current page. Click the Local Codex toolbar icon on the current HTTP(S) tab to grant access, then send again. ${error.message}`);
   }
 }
 function updateEfforts() {
@@ -275,6 +279,7 @@ $('sendForm').addEventListener('submit', async event => {
     await captureCurrentPage();
     if (!models.length) throw new Error('Reconnect in App settings to load available models.');
     if ($('allowBrowser').checked) {
+      if (!page) throw new Error('Live browser access needs an HTTP(S) webpage. Open a website or turn off Live browser this turn in App settings.');
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       const target = await browser.enable(tab);
       $('browserTarget').textContent = target.title;

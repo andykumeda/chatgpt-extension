@@ -1,3 +1,5 @@
+Fixes chat being blocked when Chrome Extensions, Settings, New Tab or the Web Store is active. Those pages now show **No page attached** and allow ordinary chat. Supported webpages still attach automatically; failed website captures preserve the draft and do not reuse stale content. Live browser access still requires a normal webpage.
+
 Local Codex source installation for macOS. No Apple Developer membership, Xcode, signed Mac app, or notarization required.
 
 Requires Node.js 22+, Git (for updates), Chrome 116+, Codex CLI, and your own Codex account. See INSTALL.md in the source ZIP or repository.

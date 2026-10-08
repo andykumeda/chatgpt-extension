@@ -15,7 +15,7 @@ cd ~/Dev/chatgpt-extension
 
 Setup registers Chrome's local native bridge and creates `~/.codex/Codex` only for a fresh installation. Existing chat history, workspaces and explicit runtime recovery settings are preserved. A running bridge or missing saved workspace stops installation.
 
-Open `chrome://extensions`, enable **Developer mode**, select **Load unpacked**, and choose the checkout's `extension` folder. Pin Local Codex and click its toolbar action on a webpage. Set your workspace through **••• → App settings**, choose a model in the composer and send. The current page is attached automatically; Chrome site access is still required. Voice is not included.
+Open `chrome://extensions`, enable **Developer mode**, select **Load unpacked**, and choose the checkout's `extension` folder. Pin Local Codex and click its toolbar action on a webpage. Set your workspace through **••• → App settings**, choose a model in the composer and send. Supported webpages are attached automatically; Chrome site access is still required. On Chrome Extensions, Settings, New Tab or the Web Store, the composer shows **No page attached** and ordinary chat works without page context. Live browser access requires a normal webpage. Voice is not included.
 
 ## Update
 

@@ -74,3 +74,9 @@ State: In progress. Source commit/push, hosted checks and public release authori
 ### Source 0.3.0 released — 2026-10-08
 
 State: Deployed (source distribution). Commit `3ed4b41ab257bb98530562fbd5b5a8b768e4883a` pushed to main. Public release: https://github.com/andykumeda/chatgpt-extension/releases/tag/v0.3.0. Hosted source checks: https://github.com/andykumeda/chatgpt-extension/actions/runs/37808846641 (passed); release: https://github.com/andykumeda/chatgpt-extension/actions/runs/37808984354 (passed). Four public assets (source ZIP, extension ZIP, two SHA-256 files) anonymously downloaded and verified against GitHub digests/checksums. Source ZIP 124746 bytes, sha256:bd65066937f9e9c524c7ce0f6e27376804f0a036eb07843740117e55f388e073. Extracted package: 39 tests, syntax checks and isolated-home ./install.sh passed. Fresh public clone: tests, install and npm run update passed. No Apple account, signing fee or Web Store needed. Another physical Mac and native Intel execution remain unverified; source installation does not depend on the deferred native companion.
+
+## Restricted-page chat fix 0.3.1 — 2026-10-08
+
+State: In progress (publication). MacBook report confirmed the active tab was Extensions/Settings/New Tab. Root cause: unconditional scripting injection and all capture failures blocking Send. Fix: classify restricted URLs/API errors before treating them as permission failures, clear context and show No page attached while allowing ordinary chat. Website permission failures still preserve the draft and block sending; no fallback tab or stale page text. Live browser requires an HTTP(S) page.
+
+Verified locally: 42 tests, syntax/manifest and panel smoke including internal tabs, Web Store, withheld tab URL, stale-context prevention, return to normal website and live-browser refusal. This machine's Chrome was inspected initially, but is a different host and is not MacBook verification. Hosted CI/release and public downloads pending.
