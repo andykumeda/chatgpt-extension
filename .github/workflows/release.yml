@@ -16,7 +16,7 @@ concurrency:
 jobs:
   release:
     if: inputs.approve_publication && github.ref == 'refs/heads/main'
-    runs-on: macos-15
+    runs-on: macos-15-intel
     permissions:
       contents: write
     steps:
