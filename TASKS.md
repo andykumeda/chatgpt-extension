@@ -82,3 +82,7 @@ State: In progress (publication). MacBook report confirmed the active tab was Ex
 Verified locally: 42 tests, syntax/manifest and panel smoke including internal tabs, Web Store, withheld tab URL, stale-context prevention, return to normal website and live-browser refusal. This machine's Chrome was inspected initially, but is a different host and is not MacBook verification. Hosted CI/release and public downloads pending.
 
 Publication recovery: initial ARM-hosted patch runs 37811537454 and 37811576615 remained queued without runners and were cancelled before execution/publication. Source-only workflows moved to macos-15-intel; local ARM checks already passed. No Apple native packaging or product behavior changed by runner selection. Replacement hosted checks/publication pending.
+
+### Restricted-page fix deployed
+
+State: Deployed. Release https://github.com/andykumeda/chatgpt-extension/releases/tag/v0.3.1. Source UI fix `c2d7bcf`; release source `f9bf42807f9a076990bb7495bfd82c9fa4ecd74f` includes Intel-hosted workflow recovery. CI 37812257099 and release 37812289315 passed. All four assets verified anonymously with SHA-256/size/checksum checks; downloaded ZIP passes 42 tests, syntax and isolated installation. Public 0.3.0-to-0.3.1 Git update preserved synthetic history/custom workspace/runtime recovery. Actual MacBook remains user-managed; update and extension Reload required there. INSTALL.md now explains hidden default workspace location and saved-chat workspace distinction.

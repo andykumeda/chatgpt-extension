@@ -39,3 +39,9 @@ ZIP copies have no Git history and cannot use `npm run update`. For an upgrade, 
 If you move a checkout or change Node/Codex paths, rerun `./install.sh`. To choose another Codex executable explicitly: `CODEX_BINARY=/absolute/path/to/codex ./install.sh`.
 
 The source flow has no Apple signing or notarization step. Chrome Web Store publication remains optional and separate; the supported free path uses **Load unpacked**. See README.md for browser permissions, data handling and limitations.
+
+## Find your workspace files
+
+A fresh installation uses `~/.codex/Codex`. The `.codex` folder is hidden in Finder: press **⌘⇧G**, enter `~/.codex/Codex`, then press Return. The installation folder under `~/Dev/chatgpt-extension` contains the program, not your chat workspace files.
+
+For a saved chat, open **App settings** and read **Chat workspace**; it may differ from the workspace for new chats. Files are created only when **Allow workspace edits** is enabled for that message and the task succeeds. An attachment error that blocks sending also prevents the file task from running. Chat history is stored separately in `~/.codex/local-sidepanel`.
