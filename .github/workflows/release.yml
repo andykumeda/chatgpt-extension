@@ -1,0 +1,44 @@
+name: Source release
+# Manual publication only; no Apple account, certificate, notarization or Sparkle key.
+on:
+  workflow_dispatch:
+    inputs:
+      approve_publication:
+        description: Publish the tested source package to GitHub Releases
+        type: boolean
+        required: true
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: source-release
+  cancel-in-progress: false
+jobs:
+  release:
+    if: inputs.approve_publication && github.ref == 'refs/heads/main'
+    runs-on: macos-15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.21.0'
+      - run: npm test
+      - run: npm run check
+      - run: /bin/sh -n install.sh
+      - run: npm run bundle
+      - run: npm run bundle:extension
+      - name: Publish source package
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          version="$(node -p 'JSON.parse(require("fs").readFileSync("package.json")).version')"
+          # Refuse existing tags/releases rather than replacing published assets.
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v$version" >/dev/null 2>&1; then
+            echo 'Version tag already exists; choose a new version before publishing.'; exit 1
+          fi
+          gh release create "v$version" output/releases/* --target "$GITHUB_SHA" --title "Local Codex $version" --notes-file distribution/SOURCE-RELEASE.md

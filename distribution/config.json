@@ -1,0 +1,14 @@
+{
+  "appName": "Local Codex",
+  "bundleIdentifier": "com.localcodex.companion",
+  "hostName": "com.local_codex.sidepanel",
+  "extensionId": "glaknpkkjijfaoebdmoppooapeakaace",
+  "protocolVersion": 1,
+  "minimumProtocolVersion": 1,
+  "minimumMacOSVersion": "13.5",
+  "minimumNodeMajor": 22,
+  "chromeWebStoreUrl": null,
+  "downloadUrl": null,
+  "updateFeedUrl": null,
+  "sparklePublicKey": null
+}

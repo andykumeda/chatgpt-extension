@@ -1,15 +1,37 @@
 {
   "manifest_version": 3,
   "name": "Local Codex Side Panel",
-  "description": "Local Codex chat, explicit page context and approved live browser actions in a workspace you choose.",
-  "version": "0.2.0",
+  "description": "Local Codex chat with automatic page context, a local workspace, and approved browser actions.",
+  "version": "0.3.0",
   "minimum_chrome_version": "116",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtB+GkBrwbaMghWBZm7XcROA+x5ShzHySzsT2NNsv3GAeeTfdNbvUo63jQmpSesMd8tr9s5tUB2X3hM3NwYcpaO/M66uZCzd9lm0626tj4mNregKQYLpHeUR3Zui1vN1NFJ72k/ZTvgh5t6TSVIG5zkju2PytiOuEOhLRQ9TT7+ktK13UXbGaRr4n0qB6XkIDUA95A1y8u8Uo3q2vd62bMIoweZMJ6L/3hoAfeLX8M5pVMAaFq7zodylm+nSQTTvEGO4Ce36B471WPvqLhCV6gknyDhdrJaoRpEfgpWV5P9UrZB8vYdpwrGT+hGUT69mC+1yh9Gir+UKAy2+fexnJtQIDAQAB",
-  "permissions": ["sidePanel", "nativeMessaging", "activeTab", "scripting"],
-  "optional_host_permissions": ["http://*/*", "https://*/*"],
-  "background": { "service_worker": "worker.js" },
-  "action": { "default_title": "Open Local Codex" },
-  "commands": { "_execute_action": { "suggested_key": { "default": "Alt+Shift+Y" } } },
-  "side_panel": { "default_path": "panel.html" },
-  "content_security_policy": { "extension_pages": "script-src 'self'; object-src 'none'; connect-src 'none'" }
+  "permissions": [
+    "sidePanel",
+    "nativeMessaging",
+    "activeTab",
+    "scripting"
+  ],
+  "optional_host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "worker.js"
+  },
+  "action": {
+    "default_title": "Open Local Codex"
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Alt+Shift+Y"
+      }
+    }
+  },
+  "side_panel": {
+    "default_path": "panel.html"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'; connect-src 'none'"
+  }
 }

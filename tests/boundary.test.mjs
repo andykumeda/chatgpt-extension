@@ -92,6 +92,22 @@ test('page attachments are bounded data; extra instruction fields are dropped', 
   assert.throws(() => pageReference({ ...page, url: 'file:///private' }), /HTTP/);
 });
 
+test('explicit runtime recovery preserves the chat index and validates runtime paths', t => {
+  const { root, policy, local } = fixture(t);
+  const state = policy.create(path.join(root, 'state'));
+  const runtimeState = path.join(root, 'fresh-runtime');
+  const store = new Store(state, policy);
+  store.data.chats.push({ id: 'owned', workspace: local, status: 'idle', messages: [] });
+  store.save();
+  const original = fs.readFileSync(store.file);
+  const bridge = new Bridge({ state, runtimeState }, () => {});
+  assert.equal(bridge.runtime, runtimeState);
+  assert.equal(bridge.store.get('owned').workspace, local);
+  assert.deepEqual(fs.readFileSync(store.file), original);
+  assert.equal(new Bridge({ state }, () => {}).runtime, state);
+  assert.throws(() => new Bridge({ state, runtimeState: path.join(os.homedir(), 'Documents', 'runtime') }, () => {}), /forbidden/);
+});
+
 test('changing the default preserves the original chat workspace; missing or replaced resume roots fail', async t => {
   const { root, local, policy } = fixture(t);
   const state = policy.create(path.join(root, 'state'));
@@ -119,4 +135,25 @@ test('invalid saved defaults fail without replacement and can be repaired withou
   await bridge.handle('setWorkspace', { workspace: local });
   assert.equal(bridge.store.data.workspace, local);
   assert.equal(bridge.client, null);
+});
+
+test('model catalog filters hidden models, paginates, and selected model/effort reach turn/start', async t => {
+  const { root, local, policy } = fixture(t);
+  const bridge = new Bridge({ state: policy.create(path.join(root, 'state')) }, () => {});
+  const visible = { model: 'test-model', displayName: 'Test model', isDefault: true, defaultReasoningEffort: 'medium', supportedReasoningEfforts: [{ reasoningEffort: 'medium' }, { reasoningEffort: 'high' }] };
+  let started;
+  bridge.client = { request: async (method, params) => {
+    if (method === 'model/list') return params.cursor ? { data: [visible] } : { data: [{ ...visible, hidden: true }], nextCursor: 'next' };
+    if (method === 'turn/start') { started = params; return { turn: { id: 'turn' } }; }
+    assert.fail(`Unexpected method ${method}`);
+  } };
+  assert.deepEqual((await bridge.handle('models')).models, [visible]);
+  bridge.loaded.add('chat');
+  bridge.store.data.chats.push({ id: 'chat', workspace: local, messages: [], status: 'idle' });
+  await assert.rejects(bridge.handle('send', { id: 'chat', text: 'test', model: 'unknown' }), /available model/);
+  await assert.rejects(bridge.handle('send', { id: 'chat', text: 'test', model: 'test-model', effort: 'unsupported' }), /supported reasoning/);
+  assert.equal(bridge.store.get('chat').messages.length, 0);
+  await bridge.handle('send', { id: 'chat', text: 'test', model: 'test-model', effort: 'high' });
+  assert.equal(started.model, 'test-model'); assert.equal(started.effort, 'high');
+  assert.deepEqual(started.sandboxPolicy, { type: 'readOnly' });
 });

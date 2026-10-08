@@ -7,32 +7,52 @@
   <link rel="stylesheet" href="panel.css">
 </head>
 <body>
-  <header><div><strong>Local Codex</strong><span id="connection" role="status">Disconnected</span></div><button id="connect">Connect</button></header>
-  <section class="settings" aria-label="Workspace and chat">
-    <label for="workspace">Workspace for new chats</label>
-    <form id="workspaceForm" class="row"><input id="workspace" value="~/.codex/Codex" spellcheck="false" required><button id="applyWorkspace">Apply</button></form>
-    <div class="row"><select id="chats" aria-label="Saved chats"><option value="">New conversation</option></select><button id="newChat">New chat</button></div>
-    <div id="chatWorkspace" class="path"></div>
-  </section>
-  <div id="error" role="alert" hidden></div>
-  <main id="messages" aria-label="Conversation" aria-live="polite"><div id="empty">No conversation yet.</div></main>
-  <footer>
-    <section id="attachment" hidden>
-      <div class="row"><strong id="pageTitle"></strong><button id="removePage" title="Remove page attachment" aria-label="Remove page attachment">Remove</button></div>
-      <div id="pageUrl" class="path"></div>
-      <details><summary id="pageSummary">Page preview</summary><pre id="pagePreview"></pre></details>
+  <div class="chat-shell">
+    <nav class="chat-header" aria-label="Chat navigation">
+      <select id="chats" aria-label="Saved chats"><option value="">New chat</option></select>
+      <button id="menuButton" class="icon-button" aria-label="Open menu" aria-expanded="false" aria-controls="appMenu">•••</button>
+      <div id="appMenu" class="menu" hidden>
+        <button id="openSettings">App settings <span aria-hidden="true">↗</span></button>
+        <button id="newChat">New chat <span aria-hidden="true">＋</span></button>
+        <div class="version">Local Codex <span id="menuVersion"></span></div>
+      </div>
+    </nav>
+    <div id="error" role="alert" hidden></div>
+    <main id="messages" aria-label="Conversation" aria-live="polite"><div id="empty" aria-label="Start a conversation"><img class="brand-mark" src="mark.svg" alt=""></div></main>
+    <footer>
+      <section id="browserApproval" aria-label="Browser action approval" hidden>
+        <strong>Approve browser action?</strong><pre id="browserAction"></pre>
+        <div class="row"><button id="denyBrowser" type="button">Deny</button><button id="approveBrowser" type="button">Allow once</button></div>
+      </section>
+      <form id="sendForm">
+        <textarea id="prompt" aria-label="Message to Codex" placeholder="Do anything" rows="3" maxlength="16000" required></textarea>
+        <div class="composer-toolbar">
+          <details id="attachment"><summary id="pageTitle" title="The current page is attached automatically">Current page</summary><div class="page-popover"><div id="pageUrl" class="path"></div><p id="pageSummary"></p><pre id="pagePreview"></pre></div></details>
+          <div class="model-controls"><select id="model" aria-label="Model" disabled><option value="">Loading models…</option></select><select id="effort" aria-label="Reasoning effort" disabled><option value="">Medium</option></select></div>
+          <button id="stop" class="round-button" type="button" aria-label="Stop response" hidden>■</button><button id="send" class="round-button" type="submit" aria-label="Send message" disabled>↑</button>
+        </div>
+      </form>
+      <div id="state" role="status" class="status">Ready</div>
+    </footer>
+  </div>
+  <dialog id="settingsDialog" aria-labelledby="settingsTitle">
+    <div class="settings-heading"><h1 id="settingsTitle">App settings</h1><button id="closeSettings" class="icon-button" aria-label="Close settings">×</button></div>
+    <section class="settings">
+      <h2>Connection</h2><div class="row"><span id="connection" role="status">Disconnected</span><button id="connect">Connect</button></div>
+      <p class="help">Run ./install.sh from your Local Codex folder. Sign in with codex login, load the extension in Chrome, then connect here.</p>
+      <p class="help" id="setupAvailability">To update: close this panel, run npm run update in that folder, then reload Local Codex in chrome://extensions.</p>
+      <div class="setup-links"><a id="downloadLink" hidden target="_blank" rel="noopener noreferrer">Source installation instructions</a><a id="storeLink" hidden target="_blank" rel="noopener noreferrer">Chrome Web Store</a></div>
+      <h2>Workspace</h2><label for="workspace">Workspace for new chats</label>
+      <form id="workspaceForm" class="row"><input id="workspace" value="~/.codex/Codex" spellcheck="false" required><button id="applyWorkspace">Apply</button></form>
+      <div id="chatWorkspace" class="path"></div>
+      <h2>Permissions for the next message</h2>
+      <label class="toggle"><input id="allowEdits" type="checkbox">Allow workspace edits</label>
+      <label class="toggle"><input id="allowBrowser" type="checkbox">Live browser this turn</label><span id="browserTarget" class="path"></span>
+      <p class="help">Permissions reset after each message. Browser actions still require approval.</p>
+      <h2>Page context</h2><p class="help">The current page is attached automatically with every message. Chrome must grant access to the site. Page content is sent to your configured model provider when you send.</p>
+      <h2>Versions</h2><dl class="versions"><dt>Extension</dt><dd id="extensionVersion"></dd><dt>Companion app</dt><dd id="appVersion">Not connected</dd><dt>Bridge</dt><dd id="bridgeVersion">Not connected</dd><dt>Protocol</dt><dd id="protocolVersion">Not connected</dd></dl>
     </section>
-    <div class="row tools"><button id="attachPage">Attach current page</button><label class="toggle"><input id="allowEdits" type="checkbox">Allow workspace edits</label></div>
-    <div class="row tools"><label class="toggle"><input id="allowBrowser" type="checkbox">Live browser this turn</label><span id="browserTarget" class="path"></span></div>
-    <section id="browserApproval" aria-label="Browser action approval" hidden>
-      <strong>Approve browser action?</strong><pre id="browserAction"></pre>
-      <div class="row"><button id="denyBrowser" type="button">Deny</button><button id="approveBrowser" type="button">Allow once</button></div>
-    </section>
-    <form id="sendForm">
-      <textarea id="prompt" aria-label="Message to Codex" placeholder="Ask Codex..." rows="3" maxlength="16000" required></textarea>
-      <div class="row"><span id="state" role="status">Ready</span><button id="stop" type="button" hidden>Stop</button><button id="send" type="submit" disabled>Send</button></div>
-    </form>
-  </footer>
+  </dialog>
   <script type="module" src="panel.js"></script>
 </body>
 </html>

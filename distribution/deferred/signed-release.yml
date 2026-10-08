@@ -1,0 +1,118 @@
+name: Signed release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+# Activation requires approved signing/update keys and protected environments.
+# No source, credential, account, or visibility changes are performed here.
+jobs:
+  build:
+    if: startsWith(github.ref, 'refs/tags/v')
+    environment: release-signing
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            runner: macos-15
+          - arch: x64
+            runner: macos-15-intel
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    env:
+      DEVELOPER_ID_APPLICATION: ${{ vars.DEVELOPER_ID_APPLICATION }}
+      NOTARYTOOL_PROFILE: local-codex-ci
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.21.0'
+      - name: Require explicit release activation and matching version tag
+        env:
+          RELEASE_ENABLED: ${{ vars.LOCAL_CODEX_RELEASE_ENABLED }}
+        run: |
+          test "$RELEASE_ENABLED" = true || { echo 'Release activation requires approval and environment setup.'; exit 1; }
+          test "$GITHUB_REF_NAME" = "v$(node -p 'JSON.parse(require("fs").readFileSync("package.json")).version')"
+          npm test
+          npm run check
+      - name: Import approved signing credentials into temporary keychain
+        env:
+          CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY_P8 }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          set -eu
+          test -n "$CERTIFICATE_P12" && test -n "$APPLE_API_KEY" && test -n "$SPARKLE_PRIVATE_KEY"
+          umask 077
+          task_keychain="$RUNNER_TEMP/local-codex.keychain-db"
+          task_password="$(openssl rand -hex 24)"
+          echo "::add-mask::$task_password"
+          printf '%s' "$CERTIFICATE_P12" | base64 --decode > "$RUNNER_TEMP/local-codex.p12"
+          printf '%s' "$APPLE_API_KEY" > "$RUNNER_TEMP/apple-key.p8"
+          printf '%s' "$SPARKLE_PRIVATE_KEY" > "$RUNNER_TEMP/sparkle-key"
+          security create-keychain -p "$task_password" "$task_keychain"
+          security set-keychain-settings -lut 21600 "$task_keychain"
+          security unlock-keychain -p "$task_password" "$task_keychain"
+          security import "$RUNNER_TEMP/local-codex.p12" -k "$task_keychain" -P "$CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$task_password" "$task_keychain"
+          security list-keychains -d user -s "$task_keychain"
+          xcrun notarytool store-credentials "$NOTARYTOOL_PROFILE" --key "$RUNNER_TEMP/apple-key.p8" --key-id "$APPLE_API_KEY_ID" --issuer "$APPLE_API_ISSUER_ID" --keychain "$task_keychain"
+          echo "NOTARYTOOL_KEYCHAIN=$task_keychain" >> "$GITHUB_ENV"
+          echo "SPARKLE_PRIVATE_KEY_FILE=$RUNNER_TEMP/sparkle-key" >> "$GITHUB_ENV"
+      - name: Build, sign and verify companion
+        run: |
+          node scripts/build-macos.mjs --arch=${{ matrix.arch }}
+          node scripts/verify-macos.mjs --arch=${{ matrix.arch }}
+      - name: Notarize and prepare signed downloads and update feed
+        run: node scripts/prepare-release.mjs --arch=${{ matrix.arch }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: signed-release-${{ matrix.arch }}
+          path: output/releases/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Remove temporary signing material
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/local-codex.keychain-db" || true
+          rm -f "$RUNNER_TEMP/local-codex.p12" "$RUNNER_TEMP/apple-key.p8" "$RUNNER_TEMP/sparkle-key"
+
+  publish:
+    needs: build
+    environment: release-publishing
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.21.0'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: signed-release-*
+          merge-multiple: true
+          path: output/releases
+      - name: Publish verified downloads before exposing signed update feeds
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_ENABLED: ${{ vars.LOCAL_CODEX_RELEASE_ENABLED }}
+        run: |
+          test "$RELEASE_ENABLED" = true || { echo 'Publication requires approval and protected environment setup.'; exit 1; }
+          node scripts/publish-release.mjs --approve-publication

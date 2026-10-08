@@ -1,12 +1,23 @@
 import { capturePage } from './capture.js';
 import { LiveBrowser } from './browser.js';
+import distribution from './distribution.js';
 
 const $ = id => document.getElementById(id);
-let port, connected = false, authenticated = false, busy = false, current = null, page = null, nextId = 1;
+const extensionVersion = chrome.runtime.getManifest().version;
+$('extensionVersion').textContent = extensionVersion;
+$('menuVersion').textContent = `v${extensionVersion}`;
+for (const [id, value] of [['downloadLink', distribution.downloadUrl], ['storeLink', distribution.chromeWebStoreUrl]]) {
+  // Unpublished/invalid endpoints never become navigable links.
+  try { if (typeof value === 'string' && new URL(value).protocol === 'https:') { $(id).href = value; $(id).hidden = false; } } catch {}
+}
+if (!$('downloadLink').hidden || !$('storeLink').hidden) $('setupAvailability').textContent = 'See the installation instructions and available extension downloads.';
+const setupGuidance = 'Run ./install.sh from your Local Codex folder, then codex login if needed. For updates, close the panel, run npm run update and reload the extension in chrome://extensions.';
+
+let port, connected = false, compatible = false, authenticated = false, busy = false, current = null, page = null, nextId = 1;
 const pending = new Map();
 let assistantBody = null, itemId = null;
 const browser = new LiveBrowser();
-let browserApproval = null, startupError = null;
+let browserApproval = null, startupError = null, models = [];
 function endBrowser() {
   browser.disable();
   browserApproval?.resolve(false); browserApproval = null;
@@ -37,13 +48,16 @@ $('approveBrowser').addEventListener('click', async () => {
 function fail(message) { $('error').textContent = message; $('error').hidden = false; }
 function clearError() { $('error').hidden = true; }
 function controls() {
-  $('send').disabled = !connected || !authenticated || busy;
+  $('send').disabled = !connected || !authenticated || busy || !models.length;
   $('stop').hidden = !busy;
   $('chats').disabled = busy;
   $('newChat').disabled = busy || !connected;
-  $('applyWorkspace').disabled = busy;
+  $('applyWorkspace').disabled = busy || !compatible;
   $('connect').disabled = busy;
   $('allowBrowser').disabled = busy;
+  $('allowEdits').disabled = busy;
+  $('model').disabled = busy || !models.length;
+  $('effort').disabled = busy || !$('effort').options.length;
 }
 function setState(status) { $('state').textContent = status; busy = ['Starting', 'Running', 'Stopping'].includes(status); controls(); }
 function request(method, params = {}) {
@@ -58,8 +72,14 @@ function request(method, params = {}) {
     port.postMessage({ id, method, params });
   });
 }
-function resetMessages() { $('messages').replaceChildren(); assistantBody = null; itemId = null; }
+function resetMessages() {
+  $('messages').replaceChildren();
+  const empty = document.createElement('div'); empty.id = 'empty'; empty.setAttribute('aria-label', 'Start a conversation');
+  const mark = document.createElement('img'); mark.className = 'brand-mark'; mark.src = 'mark.svg'; mark.alt = '';
+  empty.append(mark); $('messages').append(empty); assistantBody = null; itemId = null;
+}
 function appendMessage(role, text, attachment) {
+  $('empty')?.remove();
   const article = document.createElement('article'); article.className = `message ${role}`;
   const label = document.createElement('div'); label.className = 'role'; label.textContent = role === 'assistant' ? 'Codex' : 'You';
   const body = document.createElement('div'); body.className = 'body'; body.textContent = text;
@@ -73,7 +93,7 @@ function appendMessage(role, text, attachment) {
 }
 async function refreshChats() {
   const { chats } = await request('list');
-  $('chats').replaceChildren(new Option('New conversation', ''));
+  $('chats').replaceChildren(new Option('New chat', ''));
   for (const chat of chats) $('chats').append(new Option(chat.title, chat.id));
   $('chats').value = current?.id || '';
 }
@@ -118,7 +138,8 @@ function events(message) {
   }
 }
 async function connect() {
-  endBrowser(); startupError = null;
+  endBrowser(); startupError = null; connected = false; compatible = false; authenticated = false; models = []; controls();
+  for (const id of ['appVersion', 'bridgeVersion', 'protocolVersion']) $(id).textContent = 'Not connected';
   clearError();
   if (port) port.disconnect();
   port = chrome.runtime.connectNative('com.local_codex.sidepanel');
@@ -136,22 +157,44 @@ async function connect() {
     const runtimeError = chrome.runtime.lastError?.message;
     const error = startupError || runtimeError || 'Native bridge disconnected.';
     if (port !== thisPort) return;
-    port = null; connected = false; authenticated = false;
+    port = null; connected = false; compatible = false; authenticated = false;
     endBrowser();
     $('connection').textContent = 'Disconnected'; setState('Interrupted');
     for (const entry of pending.values()) { clearTimeout(entry.timer); entry.reject(new Error(error)); }
     pending.clear();
-    fail(`${error} Install the native host, then click Connect. Close any other Local Codex panel first.`);
+    fail(`${error} ${setupGuidance} Close any other Local Codex panel first.`);
   });
   try {
+    let compatibility;
+    try {
+      compatibility = await request('handshake', { protocolVersion: 1, minimumProtocolVersion: 1, extensionVersion });
+    } catch (error) {
+      throw new Error(`The local bridge could not confirm compatibility: ${error.message} ${setupGuidance}`);
+    }
+    if (!compatibility || !Number.isSafeInteger(compatibility.protocolVersion)
+      || !Number.isSafeInteger(compatibility.minimumProtocolVersion)
+      || compatibility.minimumProtocolVersion < 1 || compatibility.minimumProtocolVersion > compatibility.protocolVersion
+      || compatibility.protocolVersion < 1 || compatibility.minimumProtocolVersion > 1
+      || typeof compatibility.bridgeVersion !== 'string' || !/^\d+\.\d+\.\d+$/.test(compatibility.bridgeVersion)) {
+      throw new Error(`The local bridge and extension are incompatible. Update both before reconnecting. ${setupGuidance}`);
+    }
+    $('bridgeVersion').textContent = compatibility.bridgeVersion;
+    $('protocolVersion').textContent = String(Math.min(1, compatibility.protocolVersion));
+    $('appVersion').textContent = compatibility.appVersion || 'Source installation';
+    compatible = true;
     const result = await request('hello');
     connected = true; authenticated = result.authenticated;
     $('connection').textContent = authenticated ? `Connected / ${result.authType || 'provider'}` : 'Sign-in required';
     $('workspace').value = result.workspace;
     if (!authenticated) fail('Run codex login in Terminal, finish Codex sign-in, then reconnect.');
     if (current) await resume(current.id); else setState('Ready');
-    await refreshChats(); controls();
-  } catch (error) { fail(error.message); setState('Error'); }
+    await refreshChats();
+    const catalog = await request('models'); models = catalog.models;
+    $('model').replaceChildren(...models.map(model => new Option(model.displayName, model.model)));
+    const preferred = localStorage.getItem('model');
+    $('model').value = models.find(model => model.model === preferred)?.model || models.find(model => model.isDefault)?.model || models[0]?.model || '';
+    updateEfforts(); controls();
+  } catch (error) { connected = false; authenticated = false; models = []; fail(error.message); setState('Error'); }
 }
 async function resume(id) {
   clearError(); setState('Starting');
@@ -166,6 +209,7 @@ $('connect').addEventListener('click', connect);
 $('workspaceForm').addEventListener('submit', async event => {
   event.preventDefault(); clearError();
   try {
+    if (!compatible) throw new Error(`Confirm bridge compatibility before changing the workspace. ${setupGuidance}`);
     const result = await request('setWorkspace', { workspace: $('workspace').value });
     $('workspace').value = result.workspace;
     if (!connected) await connect(); else setState('Workspace saved');
@@ -178,26 +222,58 @@ $('newChat').addEventListener('click', () => {
 $('chats').addEventListener('change', () => {
   if ($('chats').value) resume($('chats').value); else $('newChat').click();
 });
-$('attachPage').addEventListener('click', async () => {
-  clearError();
+async function captureCurrentPage() {
+  page = null;
+  $('pageTitle').textContent = 'Current page';
+  $('pagePreview').textContent = '';
+  $('pageUrl').textContent = '';
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id) throw new Error('No active webpage.');
     const [{ result }] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: capturePage });
     if (!/^https?:\/\//i.test(result.url)) throw new Error('Only HTTP(S) webpages can be attached.');
     page = result;
-    $('pageTitle').textContent = page.title || 'Untitled page'; $('pageUrl').textContent = page.url;
+    $('pageTitle').textContent = page.title || 'Current page'; $('pageUrl').textContent = page.url;
     $('pageSummary').textContent = `${page.text.length.toLocaleString()} characters${page.truncated ? ' (truncated)' : ''}${page.selectedText ? ' / selection included' : ''}`;
     $('pagePreview').textContent = `${page.selectedText ? `Selection:\n${page.selectedText}\n\n` : ''}${page.text}`;
-    $('attachment').hidden = false;
-  } catch (error) { fail(`Cannot capture this page. Click the Local Codex toolbar icon on the current HTTP(S) tab to grant access, then attach again. Chrome internal pages and the Web Store are restricted. ${error.message}`); }
+    return page;
+  } catch (error) {
+    $('pageTitle').textContent = 'Page unavailable';
+    $('pageSummary').textContent = 'Click the Local Codex toolbar icon on this webpage to grant Chrome access.';
+    throw new Error(`Cannot automatically attach the current page. Click the Local Codex toolbar icon on the current HTTP(S) tab to grant access, then send again. Chrome internal pages and the Web Store are restricted. ${error.message}`);
+  }
+}
+function updateEfforts() {
+  const model = models.find(model => model.model === $('model').value);
+  const preferred = localStorage.getItem('effort');
+  $('effort').replaceChildren(...(model?.supportedReasoningEfforts || []).map(option => new Option(option.reasoningEffort[0].toUpperCase() + option.reasoningEffort.slice(1), option.reasoningEffort)));
+  $('effort').value = model?.supportedReasoningEfforts.find(option => option.reasoningEffort === preferred)?.reasoningEffort || model?.defaultReasoningEffort || '';
+  controls();
+}
+$('model').addEventListener('change', () => { localStorage.setItem('model', $('model').value); updateEfforts(); });
+$('effort').addEventListener('change', () => localStorage.setItem('effort', $('effort').value));
+function closeMenu() { $('appMenu').hidden = true; $('menuButton').setAttribute('aria-expanded', 'false'); }
+$('menuButton').addEventListener('click', () => {
+  const open = $('appMenu').hidden; $('appMenu').hidden = !open; $('menuButton').setAttribute('aria-expanded', String(open));
 });
-$('removePage').addEventListener('click', () => { page = null; $('attachment').hidden = true; });
+$('openSettings').addEventListener('click', () => { closeMenu(); $('settingsDialog').showModal(); });
+$('closeSettings').addEventListener('click', () => $('settingsDialog').close());
+document.addEventListener('click', event => { if (!event.target.closest('.chat-header')) closeMenu(); });
+document.addEventListener('keydown', event => { if (event.key === 'Escape') closeMenu(); });
+$('newChat').addEventListener('click', closeMenu);
+$('prompt').addEventListener('keydown', event => {
+  if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) { event.preventDefault(); $('sendForm').requestSubmit(); }
+});
+chrome.tabs.onActivated.addListener(() => { if (!busy) captureCurrentPage().catch(() => {}); });
+chrome.tabs.onUpdated.addListener((_id, change, tab) => { if (tab.active && change.status === 'complete' && !busy) captureCurrentPage().catch(() => {}); });
+window.addEventListener('focus', () => { if (!busy) captureCurrentPage().catch(() => {}); });
 $('sendForm').addEventListener('submit', async event => {
   event.preventDefault(); if (busy || !connected || !authenticated) return;
   const text = $('prompt').value.trim(); if (!text) return;
   clearError(); setState('Starting');
   try {
+    await captureCurrentPage();
+    if (!models.length) throw new Error('Reconnect in App settings to load available models.');
     if ($('allowBrowser').checked) {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       const target = await browser.enable(tab);
@@ -208,8 +284,8 @@ $('sendForm').addEventListener('submit', async event => {
       $('chatWorkspace').textContent = `Chat workspace: ${current.workspace}`;
     }
     appendMessage('user', text, page); assistantBody = null; itemId = null;
-    const result = await request('send', { id: current.id, text, page, allowEdits: $('allowEdits').checked, allowBrowser: $('allowBrowser').checked });
-    $('prompt').value = ''; $('removePage').click(); $('allowEdits').checked = false; $('allowBrowser').checked = false;
+    const result = await request('send', { id: current.id, text, page, allowEdits: $('allowEdits').checked, allowBrowser: $('allowBrowser').checked, model: $('model').value, effort: $('effort').value || null });
+    $('prompt').value = ''; $('attachment').open = false; $('allowEdits').checked = false; $('allowBrowser').checked = false;
     if (['starting', 'running'].includes(result.status)) setState('Running');
     await refreshChats();
   } catch (error) { endBrowser(); setState('Error'); fail(startupError || error.message); }
@@ -218,4 +294,5 @@ $('stop').addEventListener('click', async () => {
   endBrowser();
   try { await request('stop'); if (busy) setState('Stopping'); } catch (error) { fail(error.message); }
 });
+captureCurrentPage().catch(() => {});
 connect();

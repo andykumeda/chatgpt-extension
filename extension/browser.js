@@ -1,18 +1,30 @@
 import { browserDOM } from './browser-dom.js';
 
 export function browserURL(value) {
-  const url = new URL(value);
+  let url;
+  try {
+    if (typeof value !== 'string' || !value.trim()) throw new Error();
+    url = new URL(value);
+  } catch {
+    throw new Error('A valid absolute HTTP(S) webpage URL is required.');
+  }
   if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) throw new Error('Only HTTP(S) webpages without embedded credentials are supported.');
   if (/\.(zip|dmg|pkg|exe|msi|crx|pdf|csv|xlsx?|docx?|pptx?|tar|gz|7z)$/i.test(url.pathname)) throw new Error('Browser file downloads are not supported.');
   return url;
+}
+
+function tabURL(tab) {
+  if (!tab || !Number.isSafeInteger(tab.id)) throw new Error('Select an ordinary webpage first.');
+  if (!tab.url) throw new Error('Chrome has not granted access to this tab. Click the Local Codex toolbar icon on the intended webpage, then send again with Live browser this turn enabled. Access must be granted again after switching to another site.');
+  return browserURL(tab.url);
 }
 
 export class LiveBrowser {
   constructor(api = chrome) { this.api = api; this.target = null; }
   disable() { this.target = null; }
   async enable(tab) {
-    const url = browserURL(tab.url);
-    if (!Number.isSafeInteger(tab.id)) throw new Error('Select an ordinary webpage first.');
+    this.disable();
+    const url = tabURL(tab);
     const target = { tabId: tab.id, origins: new Set([url.origin]), last: null };
     this.target = target;
     try { await this.run({ operation: 'read' }); }
@@ -26,7 +38,7 @@ export class LiveBrowser {
     const target = this.target;
     if (!target) throw new Error('Live browser access is disabled for this turn.');
     const tab = await this.api.tabs.get(target.tabId);
-    const url = browserURL(tab.url);
+    const url = tabURL(tab);
     if (!target.origins.has(url.origin)) throw new Error('The tab moved to an unapproved site. Stop, select it and enable browser access again.');
     const last = target.last;
     if (operation.operation !== 'read' && operation.operation !== 'navigate' && (!last || operation.snapshot !== last.snapshot || url.href !== last.url)) throw new Error('Stale page reference. Read the page again.');

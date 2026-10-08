@@ -9,7 +9,9 @@ function check(root) {
     else if (/\.(mjs|js)$/.test(file)) execFileSync(process.execPath, ['--check', file], { stdio: 'inherit' });
   }
 }
-for (const root of ['bridge', 'extension', 'scripts', 'tests']) if (fs.existsSync(root)) check(root);
+for (const root of ['bridge', 'extension', 'scripts', 'tests', 'companion']) if (fs.existsSync(root)) check(root);
 const manifest = JSON.parse(fs.readFileSync('extension/manifest.json', 'utf8'));
 if (manifest.manifest_version !== 3 || manifest.host_permissions || manifest.externally_connectable || manifest.content_scripts) throw new Error('Unexpected broad manifest access.');
+const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+if (pkg.version !== manifest.version) throw new Error('Extension and package versions must match.');
 console.log('JavaScript syntax and narrow MV3 manifest checks passed.');

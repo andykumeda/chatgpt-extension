@@ -9,6 +9,7 @@ test('browser tool accepts only bounded named operations, never arbitrary script
   for (const args of [{ operation: 'eval', code: 'x' }, { operation: 'read', code: 'x' }, { operation: 'fill', snapshot: 's', ref: 'e1', text: 'x'.repeat(4001) }, { operation: 'scroll', snapshot: 's', dy: 2001 }, { operation: 'navigate', url: 'file:///tmp/a' }, { operation: 'navigate', url: 'https://user:secret@example.com' }]) assert.throws(() => browserOperation(args));
   assert.throws(() => browserURL('chrome://settings'));
   assert.throws(() => browserURL('https://example.com/export.zip'));
+  for (const value of [undefined, null, '', 'not a URL', '/relative']) assert.throws(() => browserURL(value), /valid absolute HTTP/);
 });
 
 test('browser replies correlate once, stay bounded, timeout and cancel without retries', async () => {
@@ -31,6 +32,19 @@ function fixture() {
   } } };
   return { api, calls, move: url => { tab = { ...tab, url }; } };
 }
+
+test('missing activeTab metadata fails actionably without injecting or retaining an old grant', async () => {
+  const { api, calls, move } = fixture(), browser = new LiveBrowser(api);
+  await assert.rejects(browser.enable(undefined), /Select an ordinary webpage/);
+  await assert.rejects(browser.enable({ id: 42 }), /toolbar icon/);
+  assert.equal(calls.length, 0);
+  await browser.enable({ id: 42, url: 'https://example.com/page' });
+  move(undefined);
+  await assert.rejects(browser.run({ operation: 'read' }), /toolbar icon/);
+  await assert.rejects(browser.enable({ id: 42 }), /toolbar icon/);
+  assert.equal(browser.target, null);
+  assert.equal(calls.length, 1);
+});
 
 test('live executor pins a tab, requires action approval, binds document and consumes refs', async () => {
   const { api, calls } = fixture(), browser = new LiveBrowser(api);
