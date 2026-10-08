@@ -13,7 +13,7 @@ The earlier Swift companion, Mac packaging and Sparkle tooling are preserved as 
 | Public repository | Codex | Deployed | Approved public visibility and anonymous access verified in prior phase |
 | Source installer | Codex | Verified | Fresh workspace, repeat install and moved checkout preserve history/config; refuses active hosts, unknown origins and missing saved workspace; isolated native-message handshake |
 | Source updater | Codex | Verified | Official main only, clean checkout, idle host, fast-forward only, tests/checks before re-registration; local two-version Git fixture with dirty/live/divergence refusal |
-| Source CI/release workflows | Codex | In progress | No Apple credentials; tests/checks/source ZIP/extension ZIP; publication authorized; hosted CI and release verification in progress |
+| Source CI/release workflows | Codex | Deployed | Hosted checks and release passed; public v0.3.0 source/extension ZIPs and checksums verified anonymously; extracted source tests and isolated installation passed |
 | Signed companion / Sparkle / Web Store | Deferred | Not started | User declined paid Apple distribution; not part of current delivery |
 
 ## Runtime contracts
@@ -30,4 +30,4 @@ The earlier Swift companion, Mac packaging and Sparkle tooling are preserved as 
 
 `.github/workflows/distribution.yml` checks and packages source on main/PR/manual runs. `.github/workflows/release.yml` publishes only via workflow_dispatch with approve_publication=true on main, after tests/checks and packaging. Existing version tags are refused. No tag push automatically invokes Apple tooling or publishes a source release.
 
-Source publication and the 0.3.0 release are authorized and being verified. Installation/update verification uses isolated homes and local repositories; real Chrome registration, user chats, Node/Codex installation and running turns remain untouched. See INSTALL.md for the supported user flow and VERIFICATION.md for test results.
+Source version 0.3.0 is published at https://github.com/andykumeda/chatgpt-extension/releases/tag/v0.3.0 from commit `3ed4b41ab257bb98530562fbd5b5a8b768e4883a`. Both hosted workflows passed. Anonymous downloads match GitHub asset digests and published checksums. The downloaded source ZIP passes all 39 tests, syntax checks and isolated-home installation. A fresh public Git clone also passes installation and npm run update. Installation/update verification uses isolated homes and local repositories; real Chrome registration, user chats, Node/Codex installation and running turns remain untouched. See INSTALL.md for the supported user flow and VERIFICATION.md for test results.

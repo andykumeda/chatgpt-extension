@@ -84,3 +84,10 @@ See [BROWSER.md](BROWSER.md) for the updated capability matrix and actual tests.
 - Hosted CI, public release and another user's installation have not been verified. Source ZIP preview is prepared from an isolated snapshot; real source remains uncommitted.
 
 - Final source candidate ZIP and extension ZIP built from an isolated committed snapshot in output/candidates/source. Source ZIP extracted; executable install.sh preserved; private runtime/Git/auth/chat/config files absent; all 39 tests pass from the extracted package. Shell syntax, workflow YAML parsing and diff checks pass. Updated panel smoke passes with source setup/update instructions. Snapshot provenance is local-only, not a published GitHub commit.
+
+## Published free source release 0.3.0 — 2026-10-08
+
+- Source commit `3ed4b41ab257bb98530562fbd5b5a8b768e4883a` is public on main; release v0.3.0 is public, stable and latest. Hosted CI run 37808846641 and source release run 37808984354 passed tests, syntax/manifest, shell syntax and both package builds.
+- All four release assets downloaded anonymously; bytes/SHA-256 match GitHub asset digests and published checksum files. Source archive's commit comment matches the release commit; executable install.sh preserved; runtime/Git/auth/config/chat files absent.
+- Actual downloaded source ZIP: 39/39 tests, syntax/manifest checks and isolated-home installer passed. Fresh anonymous HTTPS clone: tests/checks, ./install.sh and npm run update passed. Fake Codex executable used for installation testing; no real sign-in, model inference or user native-host registration changed.
+- Source updater's fast-forward and divergence/dirty/active-host safeguards are covered by the local two-version Git integration. Chrome unpacked extension still needs manual Reload. Cross-machine installation and deferred Intel companion execution remain unverified.

@@ -70,3 +70,7 @@ Real Chrome registration and chats were not changed. Production source publicati
 ## Source release 0.3.0 publication
 
 State: In progress. Source commit/push, hosted checks and public release authorized. Includes the prepared chat UI/model/automatic context changes, runtime/browser fixes and free source installer/updater. No Apple enrollment, signing keys or Web Store submission is part of this release. Hosted verification results will be appended after execution.
+
+### Source 0.3.0 released — 2026-10-08
+
+State: Deployed (source distribution). Commit `3ed4b41ab257bb98530562fbd5b5a8b768e4883a` pushed to main. Public release: https://github.com/andykumeda/chatgpt-extension/releases/tag/v0.3.0. Hosted source checks: https://github.com/andykumeda/chatgpt-extension/actions/runs/37808846641 (passed); release: https://github.com/andykumeda/chatgpt-extension/actions/runs/37808984354 (passed). Four public assets (source ZIP, extension ZIP, two SHA-256 files) anonymously downloaded and verified against GitHub digests/checksums. Source ZIP 124746 bytes, sha256:bd65066937f9e9c524c7ce0f6e27376804f0a036eb07843740117e55f388e073. Extracted package: 39 tests, syntax checks and isolated-home ./install.sh passed. Fresh public clone: tests, install and npm run update passed. No Apple account, signing fee or Web Store needed. Another physical Mac and native Intel execution remain unverified; source installation does not depend on the deferred native companion.
