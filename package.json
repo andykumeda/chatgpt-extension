@@ -1,6 +1,6 @@
 {
   "name": "local-codex-sidepanel",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "private": true,
   "type": "module",
   "engines": {
@@ -18,5 +18,5 @@
     "release:prepare": "node scripts/prepare-release.mjs",
     "update": "node scripts/update.mjs"
   },
-  "buildNumber": 4
+  "buildNumber": 5
 }

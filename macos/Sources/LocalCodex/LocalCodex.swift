@@ -93,8 +93,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 final class Setup: ObservableObject {
     @Published var status: SetupStatus?
     @Published var working = false
+    @Published var signingIn = false
     @Published var message = "Checking your setup…"
     @Published var codexPath: String = ""
+    private var loginProcess: Process?
 
     private var installedApp: URL { FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Applications/Local Codex.app") }
     var shouldOpenInstalled: Bool { status?.appInstalled == true && Bundle.main.bundleURL.standardizedFileURL != installedApp.standardizedFileURL }
@@ -147,18 +149,39 @@ final class Setup: ObservableObject {
     }
 
     func signIn() {
-        guard let binary = status?.codexPath, let codexHome = status?.codexHome else { return }
-        let quote: (String) -> String = { "'" + $0.replacingOccurrences(of: "'", with: "'\\''") + "'" }
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("LocalCodex-login-\(UUID().uuidString)")
-        let script = directory.appendingPathComponent("Sign in to Codex.command")
+        guard !signingIn, let binary = status?.codexPath, let codexHome = status?.codexHome else { return }
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: binary)
+        process.arguments = ["login"]
+        var environment = ProcessInfo.processInfo.environment
+        environment["CODEX_HOME"] = codexHome
+        process.environment = environment
+        process.standardInput = FileHandle.nullDevice
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        process.terminationHandler = { [weak self] child in
+            Task { @MainActor in
+                guard let self, self.loginProcess === child else { return }
+                self.loginProcess = nil
+                self.signingIn = false
+                if child.terminationStatus == 0 { self.run("status") }
+                else { self.message = "Sign-in did not finish. Click Sign in with Codex to try again." }
+            }
+        }
         do {
-            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
-            let contents = "#!/bin/sh\ntrap 'rm -f -- \"$0\"; rmdir -- \"$(dirname -- \"$0\")\"' EXIT\nexport CODEX_HOME=\(quote(codexHome))\n\(quote(binary)) login\n"
-            try contents.write(to: script, atomically: true, encoding: .utf8)
-            try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: script.path)
-            NSWorkspace.shared.open([script], withApplicationAt: URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"), configuration: NSWorkspace.OpenConfiguration())
-            message = "Complete sign-in in Terminal, then click Refresh."
-        } catch { message = "Could not open the sign-in command. Run codex login in Terminal, then refresh." }
+            try process.run()
+            loginProcess = process
+            signingIn = true
+            message = "Complete sign-in in your browser. This window refreshes when you finish."
+        } catch { message = "Could not start Codex sign-in. Check the selected executable and try again." }
+    }
+
+    func cancelSignIn() {
+        guard let process = loginProcess else { return }
+        loginProcess = nil
+        signingIn = false
+        if process.isRunning { process.terminate() }
+        message = "Sign-in cancelled."
     }
 }
 
@@ -181,7 +204,8 @@ struct LocalCodexApp: App {
                     Button("Choose executable…") { setup.chooseCodex() }
                 }
                 row("2. Sign in", detail: setup.status?.authenticated == true ? "Signed in to your Codex account." : "Use your own account. Sign-in stays with Codex.", done: setup.status?.authenticated == true) {
-                    Button("Sign in with Codex") { setup.signIn() }.disabled(setup.status?.codexPath == nil)
+                    Button("Sign in with Codex") { setup.signIn() }.disabled(setup.status?.codexPath == nil || setup.signingIn)
+                    if setup.signingIn { Button("Cancel sign-in") { setup.cancelSignIn() } }
                 }
                 row("3. Install and connect", detail: setup.status?.registered == true ? "Chrome uses the app in ~/Applications." : "Install in ~/Applications and register the local Chrome connection.", done: setup.status?.registered == true) {
                     Button("Install and connect Chrome") { setup.run("install", copy: true) }
@@ -200,11 +224,14 @@ struct LocalCodexApp: App {
                 HStack {
                     Button("Refresh") { setup.run("status") }
                     Button("Check for Updates…") { updates.check() }.disabled(!updates.enabled)
+                    Spacer()
+                    Button("Quit") { NSApp.terminate(nil) }
                     if setup.working { ProgressView().controlSize(.small) }
                 }
             }
             .padding(28).frame(width: 620).disabled(setup.working)
             .task { setup.run("status") }
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in setup.cancelSignIn() }
         }
         .windowResizability(.contentSize)
     }

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Local Codex Side Panel",
   "description": "Local Codex chat with automatic page context, a local workspace, and approved browser actions.",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "minimum_chrome_version": "116",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtB+GkBrwbaMghWBZm7XcROA+x5ShzHySzsT2NNsv3GAeeTfdNbvUo63jQmpSesMd8tr9s5tUB2X3hM3NwYcpaO/M66uZCzd9lm0626tj4mNregKQYLpHeUR3Zui1vN1NFJ72k/ZTvgh5t6TSVIG5zkju2PytiOuEOhLRQ9TT7+ktK13UXbGaRr4n0qB6XkIDUA95A1y8u8Uo3q2vd62bMIoweZMJ6L/3hoAfeLX8M5pVMAaFq7zodylm+nSQTTvEGO4Ce36B471WPvqLhCV6gknyDhdrJaoRpEfgpWV5P9UrZB8vYdpwrGT+hGUT69mC+1yh9Gir+UKAy2+fexnJtQIDAQAB",
   "permissions": [

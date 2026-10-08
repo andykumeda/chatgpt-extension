@@ -86,3 +86,7 @@ Publication recovery: initial ARM-hosted patch runs 37811537454 and 37811576615 
 ### Restricted-page fix deployed
 
 State: Deployed. Release https://github.com/andykumeda/chatgpt-extension/releases/tag/v0.3.1. Source UI fix `c2d7bcf`; release source `f9bf42807f9a076990bb7495bfd82c9fa4ecd74f` includes Intel-hosted workflow recovery. CI 37812257099 and release 37812289315 passed. All four assets verified anonymously with SHA-256/size/checksum checks; downloaded ZIP passes 42 tests, syntax and isolated installation. Public 0.3.0-to-0.3.1 Git update preserved synthetic history/custom workspace/runtime recovery. Actual MacBook remains user-managed; update and extension Reload required there. INSTALL.md now explains hidden default workspace location and saved-chat workspace distinction.
+
+## Dock-free companion — 2026-10-08
+
+State: In progress. Hide Local Codex with LSUIElement, replace Terminal-based sign-in with a background Codex process, provide cancellation and an in-window Quit control. ARM build and packaged native-host handshake pass; running app activation policy is accessory (1), and no Terminal process appears during fixture sign-in/cancellation. Full 42 source tests and syntax checks pass. Packaging refreshed development builds for both Mac architectures; paid signing/automatic updates remain deferred. MacBook itself has not been accessed.

@@ -1,3 +1,5 @@
+Local Codex 0.3.2 adds Dock-free behavior to the optional companion development build: browser sign-in runs directly without Terminal, with Cancel sign-in and Quit controls. Source installation and updates remain the supported distribution. Optional companion ZIPs are ad-hoc signed, not Developer ID signed or notarized; automatic updates and the Chrome Web Store remain deferred.
+
 Fixes chat being blocked when Chrome Extensions, Settings, New Tab or the Web Store is active. Those pages now show **No page attached** and allow ordinary chat. Supported webpages still attach automatically; failed website captures preserve the draft and do not reuse stale content. Live browser access still requires a normal webpage.
 
 Local Codex source installation for macOS. No Apple Developer membership, Xcode, signed Mac app, or notarization required.

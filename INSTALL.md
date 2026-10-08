@@ -45,3 +45,11 @@ The source flow has no Apple signing or notarization step. Chrome Web Store publ
 A fresh installation uses `~/.codex/Codex`. The `.codex` folder is hidden in Finder: press **⌘⇧G**, enter `~/.codex/Codex`, then press Return. The installation folder under `~/Dev/chatgpt-extension` contains the program, not your chat workspace files.
 
 For a saved chat, open **App settings** and read **Chat workspace**; it may differ from the workspace for new chats. Files are created only when **Allow workspace edits** is enabled for that message and the task succeeds. An attachment error that blocks sending also prevents the file task from running. Chat history is stored separately in `~/.codex/local-sidepanel`.
+
+## Optional companion development app
+
+The source installer above is the supported path. Optional companion development ZIPs are provided for Apple Silicon (`arm64`) and Intel (`x64`). These apps are ad-hoc signed; they have no paid Developer ID signature, notarization or automatic updates. macOS may require you to approve opening the downloaded app in Privacy & Security.
+
+To replace an earlier companion, close the Chrome panel, open the existing Local Codex setup window and quit it (older builds use its application menu). Extract the matching companion ZIP and replace `~/Applications/Local Codex.app` in Finder. Open the new copy and use **Install and connect Chrome** if needed. The installer preserves the existing history and workspace configuration. Use the extension bundled in `Local Codex.app/Contents/Resources/extension` when updating an earlier companion extension.
+
+Local Codex does not appear in the Dock. Its **Sign in with Codex** button starts browser authentication directly without Terminal; **Cancel sign-in** stops it. Reopen the app from Finder for setup or the **Quit** button. Chrome starts the bridge directly in the background, so normal chat requires neither a setup window nor Terminal. Terminal used for an earlier installation can be quit once that command has finished; the app does not hide or quit unrelated Terminal sessions.

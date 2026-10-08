@@ -10,6 +10,7 @@ const app = path.join(project, 'output/macos', arch, 'Local Codex.app');
 const resources = path.join(app, 'Contents/Resources');
 const info = readJSON(path.join(resources, 'build.json'));
 assert.equal(info.version, pkg.version); assert.equal(info.architecture, arch);
+assert.equal(run('/usr/libexec/PlistBuddy', ['-c', 'Print :LSUIElement', path.join(app, 'Contents/Info.plist')]).trim(), 'true', 'Companion must not appear in the Dock');
 run('/usr/bin/codesign', ['--verify', '--deep', '--strict', app]);
 for (const file of walk(resources)) {
   assert(!/(^|\/)(?:\.runtime|\.env|auth\.json|chats\.json|host-config\.json|node_modules)(\/|$)/.test(path.relative(resources, file)), 'Private/runtime source in app');

@@ -94,3 +94,5 @@ Synthetic browser integration: `PLAYWRIGHT_MODULE=/absolute/path/to/playwright/i
 ## Distribution
 
 Source releases contain `install.sh`, the native bridge and the unpacked Chrome extension. GitHub Actions tests/packages source without Apple signing credentials. Release publication requires an explicit manual workflow approval. See [INSTALL.md](INSTALL.md) and [DISTRIBUTION.md](DISTRIBUTION.md). Earlier companion/Sparkle tooling remains deferred and is not used by the source installation or default workflows.
+
+The optional, ad-hoc-signed companion development build runs without a Dock icon. Its Sign in button launches Codex directly and opens browser authentication without Terminal. Reopen Local Codex from Finder to access setup or Quit. The source bridge also runs without Terminal during normal Chrome use; Terminal is needed only for source installation and update commands. Developer ID signing, notarization and automatic companion updates remain deferred.

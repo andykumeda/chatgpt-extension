@@ -55,6 +55,7 @@ const info = {
   CFBundleDisplayName: distribution.appName, CFBundleExecutable: 'LocalCodex', CFBundlePackageType: 'APPL',
   CFBundleShortVersionString: pkg.version, CFBundleVersion: String(pkg.buildNumber),
   LSMinimumSystemVersion: distribution.minimumMacOSVersion, NSHighResolutionCapable: true,
+  LSUIElement: true,
   LocalCodexDevelopmentBuild: development,
   SUEnableAutomaticChecks: updateConfigurationReady() && !development,
   SUAutomaticallyUpdate: false, SUEnableSystemProfiling: false,
