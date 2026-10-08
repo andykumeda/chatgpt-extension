@@ -90,3 +90,7 @@ State: Deployed. Release https://github.com/andykumeda/chatgpt-extension/release
 ## Dock-free companion — 2026-10-08
 
 State: In progress. Hide Local Codex with LSUIElement, replace Terminal-based sign-in with a background Codex process, provide cancellation and an in-window Quit control. ARM build and packaged native-host handshake pass; running app activation policy is accessory (1), and no Terminal process appears during fixture sign-in/cancellation. Full 42 source tests and syntax checks pass. Packaging refreshed development builds for both Mac architectures; paid signing/automatic updates remain deferred. MacBook itself has not been accessed.
+
+### Dock-free update published
+
+State: Deployed (public artifacts); MacBook installation remains user-managed. Code `45b1c9c5e2966c6e1c111db3ad6130abafaecef7` pushed to main. Release https://github.com/andykumeda/chatgpt-extension/releases/tag/v0.3.2 includes source/extension and optional arm64/x64 development companion ZIPs, with checksums. Hosted CI 37859400897 and release 37859410539 pass. All eight assets anonymously downloaded and hash/size verified. ARM packaged-host handshake, runtime no-Dock activation policy, no Terminal during fixture login, login completion/auto-refresh, cancellation and Quit verified. Intel contents/signatures verified statically; actual MacBook and real account login not exercised. Paid signing/notarization/Sparkle/Web Store remain deferred.
