@@ -28,6 +28,7 @@ test('website capture failures and missing results remain errors; ordinary pages
   assert.equal((await captureActivePage(api)).text, 'Fresh text');
   assert.deepEqual(calls[0].target, { tabId: 7 });
   await assert.rejects(captureActivePage(fixture(undefined, 'Cannot access contents of url "https://example.com". Extension manifest must request permission to access this host.').api), /request permission/);
+  await assert.rejects(captureActivePage(fixture(undefined, 'Cannot access contents of the page. Extension manifest must request permission to access the respective host.').api), /request permission/);
   await assert.rejects(captureActivePage(fixture('https://example.com', 'Access denied').api), /Access denied/);
   api.scripting.executeScript = async () => []; await assert.rejects(captureActivePage(api), /no page content/);
 });

@@ -22,9 +22,16 @@ try {
   const errors = []; page.on('pageerror', error => errors.push(error.message));
   await page.addInitScript(version => {
     window.calls = []; window.captureCount = 0; window.denyCapture = false; window.activeURL = 'https://example.com';
+    window.pageAccess = false; window.grantPageAccess = false; window.permissionRequests = [];
+    let permissionsRemoved;
     let listener;
     const noopEvent = { addListener() {} };
     window.chrome = {
+      permissions: {
+        contains: async () => window.pageAccess,
+        request: async request => { window.permissionRequests.push(request); window.pageAccess = window.grantPageAccess; return window.pageAccess; },
+        onAdded: noopEvent, onRemoved: { addListener(fn) { permissionsRemoved = fn; } },
+      },
       runtime: { getManifest: () => ({ version }), connectNative: () => ({ onMessage: { addListener(fn) { listener = fn; } }, onDisconnect: noopEvent, disconnect() {}, postMessage(message) {
         window.calls.push(message);
         const result = ({ handshake: { protocolVersion: 1, minimumProtocolVersion: 1, bridgeVersion: version }, hello: { workspace: '/local/workspace', authenticated: true }, list: { chats: [] }, models: { models: [
@@ -37,8 +44,9 @@ try {
           listener({ id: message.id, result }); if (message.method === 'send') setTimeout(() => listener({ event: 'state', chatId: 'test-chat', status: 'completed' }), 10); });
       } }) },
       tabs: { query: async () => [{ id: 1, title: 'Example', url: window.activeURL || undefined }], onActivated: noopEvent, onUpdated: noopEvent },
-      scripting: { executeScript: async () => { if (!window.activeURL) throw new Error('Cannot access a chrome:// URL'); if (window.denyCapture) throw new Error('Access denied'); window.captureCount++; return [{ result: { title: 'Example', url: window.activeURL, text: `Fresh snapshot ${window.captureCount}`, selectedText: '', truncated: false } }]; } },
+      scripting: { executeScript: async () => { if (!window.activeURL) throw new Error('Cannot access a chrome:// URL'); if (window.denyCapture || (window.needsPageAccess && !window.pageAccess)) throw new Error('Cannot access contents of the page. Extension manifest must request permission to access the respective host.'); window.captureCount++; return [{ result: { title: 'Example', url: window.activeURL, text: `Fresh snapshot ${window.captureCount}`, selectedText: '', truncated: false } }]; } },
     };
+    window.revokePageAccess = () => { window.pageAccess = false; permissionsRemoved(); };
   }, version);
   await page.goto(`http://127.0.0.1:${server.address().port}/panel.html`);
   await page.waitForFunction(() => !document.getElementById('model').disabled);
@@ -70,6 +78,38 @@ try {
   assert.equal(await page.evaluate(() => window.calls.filter(call => call.method === 'send').length), 1);
   assert.equal(await page.locator('#prompt').inputValue(), 'Do not send stale context');
   await page.evaluate(() => { window.denyCapture = false; });
+  // A new site's missing grant preserves the draft; only an explicit settings click requests access.
+  await page.evaluate(() => { window.needsPageAccess = true; window.activeURL = 'https://other.example/'; });
+  await page.locator('#send').click();
+  await page.waitForFunction(() => !document.getElementById('error').hidden);
+  assert.match(await page.locator('#error').textContent(), /enable automatic page access once/);
+  assert.equal(await page.evaluate(() => window.permissionRequests.length), 0);
+  await page.locator('#menuButton').click(); await page.locator('#openSettings').click();
+  await page.locator('#enablePageAccess').click();
+  await page.waitForFunction(() => document.getElementById('pageAccessStatus').textContent.includes('not granted'));
+  assert.equal(await page.locator('#prompt').inputValue(), 'Do not send stale context');
+  assert.equal(await page.evaluate(() => window.calls.filter(call => call.method === 'send').length), 1);
+  await page.evaluate(() => { window.grantPageAccess = true; });
+  await page.locator('#enablePageAccess').click();
+  await page.waitForFunction(() => document.getElementById('pageAccessStatus').textContent.includes('enabled'));
+  assert.deepEqual(await page.evaluate(() => window.permissionRequests.at(-1)), { origins: ['http://*/*', 'https://*/*'] });
+  assert.equal(await page.locator('#enablePageAccess').isDisabled(), true);
+  assert.equal(await page.evaluate(() => window.calls.filter(call => call.method === 'send').length), 1);
+  assert.equal(await page.locator('#prompt').inputValue(), 'Do not send stale context');
+  for (const width of [320, 722]) {
+    await page.setViewportSize({ width, height: 988 });
+    assert.equal(await page.evaluate(() => document.getElementById('settingsDialog').scrollWidth <= innerWidth), true, `settings overflow at ${width}px`);
+  }
+  await page.screenshot({ path: '.runtime/page-access-settings.png' });
+  await page.locator('#closeSettings').click();
+  const beforeGrantSend = await page.evaluate(() => window.captureCount);
+  await page.locator('#send').click();
+  await page.waitForFunction(() => window.calls.filter(call => call.method === 'send').length === 2);
+  assert.equal(await page.evaluate(() => window.calls.filter(call => call.method === 'send').at(-1).params.page.url), 'https://other.example/');
+  assert.equal(await page.evaluate(() => window.captureCount), beforeGrantSend + 1);
+  await page.waitForFunction(() => document.getElementById('state').textContent === 'Completed');
+  await page.evaluate(() => { window.revokePageAccess(); window.needsPageAccess = false; });
+  await page.waitForFunction(() => !document.getElementById('enablePageAccess').disabled);
   await page.locator('#newChat').evaluate(button => button.click());
   for (const url of ['chrome://extensions', 'chrome://settings', 'chrome://newtab/', 'https://chromewebstore.google.com/detail/test', null]) {
     await page.evaluate(url => { window.activeURL = url; }, url);
@@ -113,5 +153,5 @@ try {
     assert.equal(await page.locator('#applyWorkspace').isDisabled(), true);
   }
   assert.deepEqual(errors, []);
-  console.log('Panel UI passed: settings, model/effort selection, fresh automatic context, denied capture without send, 320–1440px layouts, restricted tabs allow chat without stale attachments, live browser remains blocked there, compatibility errors prevent startup/send, no page errors.');
+  console.log('Panel UI passed: settings, explicit website permission request with denial/grant/revocation, draft preserved without automatic send, fresh cross-site context, model/effort selection, 320–1440px layouts, restricted tabs allow chat without stale attachments, live browser remains blocked there, compatibility errors prevent startup/send, no page errors.');
 } finally { await browser?.close(); server.close(); }

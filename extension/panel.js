@@ -4,6 +4,7 @@ import distribution from './distribution.js';
 
 const $ = id => document.getElementById(id);
 const extensionVersion = chrome.runtime.getManifest().version;
+const pageOrigins = ['http://*/*', 'https://*/*'];
 $('extensionVersion').textContent = extensionVersion;
 $('menuVersion').textContent = `v${extensionVersion}`;
 for (const [id, value] of [['downloadLink', distribution.downloadUrl], ['storeLink', distribution.chromeWebStoreUrl]]) {
@@ -243,8 +244,8 @@ async function captureCurrentPage() {
     return page;
   } catch (error) {
     $('pageTitle').textContent = 'Page unavailable';
-    $('pageSummary').textContent = 'Click the Local Codex toolbar icon on this webpage to grant Chrome access.';
-    throw new Error(`Cannot automatically attach the current page. Click the Local Codex toolbar icon on the current HTTP(S) tab to grant access, then send again. ${error.message}`);
+    $('pageSummary').textContent = 'Enable automatic page access in App settings, or click the Local Codex toolbar icon on this webpage.';
+    throw new Error(`Cannot attach the current page. In App settings → Page context, enable automatic page access once, or click the Local Codex toolbar icon on this website, then send again. ${error.message}`);
   }
 }
 function updateEfforts() {
@@ -260,7 +261,31 @@ function closeMenu() { $('appMenu').hidden = true; $('menuButton').setAttribute(
 $('menuButton').addEventListener('click', () => {
   const open = $('appMenu').hidden; $('appMenu').hidden = !open; $('menuButton').setAttribute('aria-expanded', String(open));
 });
-$('openSettings').addEventListener('click', () => { closeMenu(); $('settingsDialog').showModal(); });
+async function refreshPageAccess() {
+  try {
+    const enabled = await chrome.permissions.contains({ origins: pageOrigins });
+    $('pageAccessStatus').textContent = enabled ? 'Automatic website access enabled' : 'Automatic access not enabled for all websites';
+    $('enablePageAccess').disabled = enabled;
+  } catch {
+    $('pageAccessStatus').textContent = 'Could not check website access';
+    $('enablePageAccess').disabled = false;
+  }
+}
+$('enablePageAccess').addEventListener('click', async () => {
+  // Request synchronously from this explicit click, before any await loses the user gesture.
+  $('enablePageAccess').disabled = true;
+  try {
+    const granted = await chrome.permissions.request({ origins: pageOrigins });
+    await refreshPageAccess();
+    if (granted) {
+      clearError();
+      await captureCurrentPage().catch(error => fail(error.message));
+    } else $('pageAccessStatus').textContent = 'Access was not granted. Use the toolbar icon on each new site.';
+  } catch (error) { $('enablePageAccess').disabled = false; fail(`Could not enable automatic page access. ${error.message}`); }
+});
+chrome.permissions.onAdded.addListener(refreshPageAccess);
+chrome.permissions.onRemoved.addListener(refreshPageAccess);
+$('openSettings').addEventListener('click', () => { closeMenu(); $('settingsDialog').showModal(); void refreshPageAccess(); });
 $('closeSettings').addEventListener('click', () => $('settingsDialog').close());
 document.addEventListener('click', event => { if (!event.target.closest('.chat-header')) closeMenu(); });
 document.addEventListener('keydown', event => { if (event.key === 'Escape') closeMenu(); });

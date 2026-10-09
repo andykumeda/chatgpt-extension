@@ -15,7 +15,7 @@ cd ~/Dev/chatgpt-extension
 
 Setup registers Chrome's local native bridge and creates `~/.codex/Codex` only for a fresh installation. Existing chat history, workspaces and explicit runtime recovery settings are preserved. A running bridge or missing saved workspace stops installation.
 
-Open `chrome://extensions`, enable **Developer mode**, select **Load unpacked**, and choose the checkout's `extension` folder. Pin Local Codex and click its toolbar action on a webpage. Set your workspace through **••• → App settings**, choose a model in the composer and send. Supported webpages are attached automatically; Chrome site access is still required. On Chrome Extensions, Settings, New Tab or the Web Store, the composer shows **No page attached** and ordinary chat works without page context. Live browser access requires a normal webpage. Voice is not included.
+Open `chrome://extensions`, enable **Developer mode**, select **Load unpacked**, and choose the checkout's `extension` folder. Pin Local Codex and click its toolbar action on a webpage. Set your workspace through **••• → App settings**, choose a model in the composer and send. For attachment across websites, open **App settings → Page context → Enable automatic page access** and approve Chrome’s one-time HTTP(S) website-access prompt. Without this opt-in, click the toolbar action on each new site; the temporary grant expires after changing sites. Supported webpages are recaptured automatically before every send. On Chrome Extensions, Settings, New Tab or the Web Store, the composer shows **No page attached** and ordinary chat works without page context. Live browser access requires a normal webpage. Voice is not included.
 
 ## Update
 
@@ -55,3 +55,7 @@ To replace an earlier companion, close the Chrome panel, open the existing Local
 Local Codex does not appear in the Dock. Its **Sign in with Codex** button starts browser authentication directly without Terminal; **Cancel sign-in** stops it. Reopen the app from Finder for setup or the **Quit** button. Chrome starts the bridge directly in the background, so normal chat requires neither a setup window nor Terminal. Terminal used for an earlier installation can be quit once that command has finished; the app does not hide or quit unrelated Terminal sessions.
 
 If an old Local Codex shortcut was pinned to the Dock, remove that shortcut once; the updated app does not create a running Dock entry.
+
+## Extension-only update 0.3.3
+
+The website-access fix is in the Chrome extension. Existing 0.3.2 companion apps/bridges remain compatible and do not need replacement. Source users update this checkout and reload the extension. Companion users can download the 0.3.3 extension ZIP, extract it into a permanent local folder, then replace the old unpacked extension entry with that folder using Load unpacked. The extension ID stays the same, and native chat history/workspaces are preserved. Enable automatic page access once in App settings and confirm Chrome’s prompt on each Mac.

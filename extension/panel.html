@@ -49,7 +49,10 @@
       <label class="toggle"><input id="allowEdits" type="checkbox">Allow workspace edits</label>
       <label class="toggle"><input id="allowBrowser" type="checkbox">Live browser this turn</label><span id="browserTarget" class="path"></span>
       <p class="help">Permissions reset after each message. Browser actions still require approval.</p>
-      <h2>Page context</h2><p class="help">The current page is attached automatically with every message. Chrome must grant access to the site. Page content is sent to your configured model provider when you send.</p>
+      <h2>Page context</h2>
+      <div class="row"><span id="pageAccessStatus" role="status">Checking website access…</span><button id="enablePageAccess">Enable automatic page access</button></div>
+      <p class="help">Allow access to HTTP(S) websites once so the current page attaches automatically when you change sites. Chrome will ask you to confirm. Without this permission, click the toolbar icon on each new site. You can revoke access in Chrome’s extension settings.</p>
+      <p class="help">Granting access does not send your draft or page content. The attached snapshot goes to your configured model provider when you send. Chrome internal pages and the Web Store cannot be attached. Live browser actions still require approval.</p>
       <h2>Versions</h2><dl class="versions"><dt>Extension</dt><dd id="extensionVersion"></dd><dt>Companion app</dt><dd id="appVersion">Not connected</dd><dt>Bridge</dt><dd id="bridgeVersion">Not connected</dd><dt>Protocol</dt><dd id="protocolVersion">Not connected</dd></dl>
     </section>
   </dialog>
