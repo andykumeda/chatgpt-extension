@@ -6,7 +6,7 @@ A focused macOS prototype: Chrome MV3 side panel -> Chrome native messaging -> l
 
 For the downloadable macOS bundle, see [Releases](https://github.com/andykumeda/chatgpt-extension/releases) and [INSTALL.md](INSTALL.md). The repository and existing downloads are public. The supported distribution is a source installer plus an update command. Apple Developer ID, Xcode and a signed Mac app are not required.
 
-Prerequisites: macOS, Chrome 116+, Node.js 22+, and a working Codex CLI (tested with 0.160.0).
+Prerequisites: macOS, Chrome 116+, Node.js 22+, and a working Codex CLI (browser workflow tested with 0.160.0; GPT-6.1 Sol native streaming/restart/resume tested on the MacBook with 0.162.1).
 
 Clone [this repository](https://github.com/andykumeda/chatgpt-extension) into a local folder outside Documents/iCloud, then open a terminal in the checkout:
 
