@@ -34,6 +34,8 @@ Finally, open `chrome://extensions`, click **Reload** for Local Codex and reopen
 
 If Connect does not respond, close the side panel, reload Local Codex in `chrome://extensions`, and reopen the toolbar icon. Check the extension's **Errors** entry if it still fails. Reloading source files alone does not install the native bridge: Git does not include the generated `.runtime` launcher/configuration. A Chrome registration pointing to a missing launcher must be repaired without deleting `~/.codex/local-sidepanel` or changing saved workspace paths. The source installer deliberately preserves unknown registrations; do not delete a live bridge lock or unrelated native hosts.
 
+If a model is missing, the picker reflects the native Codex `model/list` response, not a hardcoded list. A shared `model_catalog_json` setting can replace the catalog with a static custom list that omits newer OpenAI models. Reconnecting or updating the CLI alone does not establish that such a list was refreshed. Diagnose the effective catalog and account availability before changing shared Codex/Ollama settings; do not add an unverified model to the picker or assume that displaying its name proves access. See [Codex configuration](https://learn.chatgpt.com/docs/config-file/config-reference).
+
 ## ZIP installation
 
 Download the source ZIP and matching checksum from [GitHub Releases](https://github.com/andykumeda/chatgpt-extension/releases). Verify it with `shasum -a 256 -c <download-name>.sha256`, extract into a permanent folder under `~/Dev`, then run `./install.sh` there and load its `extension` directory.
