@@ -1,5 +1,9 @@
 # Task Ledger
 
+## MacBook connection investigation — 2026-10-09
+
+State: Blocked. User reports Connect does nothing on the MacBook. Plan: inspect the affected installation/error and transport; apply a targeted correction; verify reconnect on that Mac. This terminal is on the Mini; the MacBook Desktop Commander agent is offline and read-only SSH to its advertised local hostname timed out. No affected-device fix or successful connection claimed. Current broker regression checks pass (2/2), including explicit rejection of an older unscoped native bridge. Source commit `3d621ef` requires the updated bridge despite retaining the 0.3.3 version label. Corrected INSTALL.md to distinguish the published compatible 0.3.3 ZIP from the newer source transport; a mixed installation is a hypothesis, not the confirmed MacBook cause. Awaiting Chrome extension Errors/status and installation type. No credentials, workspace settings, official apps or chat databases modified. Prior source commit was pushed; this diagnostic documentation is local only.
+
 ## Mandatory documented commits — 2026-10-09
 
 State: Verified. Added repository-root `AGENTS.md` requiring documentation, verification and a focused local commit before reporting completed work, without waiting for a separate commit request. Explicit leave-uncommitted instructions and genuine blockers are exceptions; unrelated changes/private runtime data must never be staged. Push/release remains a separate authorization. This closeout commit records the completed composer/permission preferences, original logo, conflict guidance and multi-panel changes together because they share panel/worker files. Closeout rerun: 49/49 tests, syntax/manifest checks, whitespace checks and synthetic panel smoke pass. Existing live-verification limitations remain recorded below; no new publication requested. Private closeout notes use ignored `.runtime/HANDOFF.md`.

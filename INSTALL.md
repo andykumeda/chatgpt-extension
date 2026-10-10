@@ -56,6 +56,8 @@ Local Codex does not appear in the Dock. Its **Sign in with Codex** button start
 
 If an old Local Codex shortcut was pinned to the Dock, remove that shortcut once; the updated app does not create a running Dock entry.
 
-## Extension-only update 0.3.3
+## Published extension-only update 0.3.3
 
-The website-access fix is in the Chrome extension. Existing 0.3.2 companion apps/bridges remain compatible and do not need replacement. Source users update this checkout and reload the extension. Companion users can download the 0.3.3 extension ZIP, extract it into a permanent local folder, then replace the old unpacked extension entry with that folder using Load unpacked. The extension ID stays the same, and native chat history/workspaces are preserved. Enable automatic page access once in App settings and confirm Chrome’s prompt on each Mac.
+The published 0.3.3 extension ZIP contains the website-access fix and works with the published 0.3.2 companion. This does not describe the newer source checkout: commit `3d621ef` adds multi-panel session routing, requiring both the extension and native bridge from that checkout. Its displayed version still reads 0.3.3, so the version label alone cannot establish compatibility. No matching new companion release has been published.
+
+For the current source installation, close every Local Codex panel, run `npm run update` from the Git clone, then reload Local Codex in `chrome://extensions`. The update registers the bridge from the same checkout. Do not combine the current source extension with the older companion bridge. ZIP users must install matching extension/bridge source together using `./install.sh` from a permanent local folder outside Downloads, Documents and iCloud. Preserve `~/.codex/local-sidepanel` and the original chat workspaces; do not delete history or a live bridge lock to recover a connection.
