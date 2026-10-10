@@ -36,6 +36,14 @@ If Connect does not respond, close the side panel, reload Local Codex in `chrome
 
 If a model is missing, the picker reflects the native Codex `model/list` response, not a hardcoded list. A shared `model_catalog_json` setting can replace the catalog with a static custom list that omits newer OpenAI models. Reconnecting or updating the CLI alone does not establish that such a list was refreshed. Diagnose the effective catalog and account availability before changing shared Codex/Ollama settings; do not add an unverified model to the picker or assume that displaying its name proves access. See [Codex configuration](https://learn.chatgpt.com/docs/config-file/config-reference).
 
+For a source installation, an explicit bridge-only catalog can override that inherited setting without editing global Codex configuration. Close all panels, place a valid Codex `{"models": [...]}` catalog in a permanent local file, then run:
+
+```sh
+LOCAL_CODEX_MODEL_CATALOG=/absolute/local/path/models.json ./install.sh
+```
+
+The installer saves this as `modelCatalog` in its private host configuration and preserves it across updates. The bridge passes it to the supported app-server `-c model_catalog_json` option. Missing files, directories, Documents/iCloud paths and unsafe symlinks fail clearly without falling back to the inherited catalog. Reconnect after installation. Use `LOCAL_CODEX_MODEL_CATALOG='' ./install.sh` to restore inherited catalog behavior. A catalog snapshot is static: refresh its model metadata when needed and verify actual model access. Never include account identity, authentication data or conversation content in a catalog, and never publish runtime catalogs with a release.
+
 ## ZIP installation
 
 Download the source ZIP and matching checksum from [GitHub Releases](https://github.com/andykumeda/chatgpt-extension/releases). Verify it with `shasum -a 256 -c <download-name>.sha256`, extract into a permanent folder under `~/Dev`, then run `./install.sh` there and load its `extension` directory.

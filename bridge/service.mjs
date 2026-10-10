@@ -28,6 +28,7 @@ export class Bridge {
     this.config = config;
     this.emit = emit;
     this.policy = new PathPolicy();
+    this.modelCatalog = config.modelCatalog === undefined ? undefined : this.policy.file(config.modelCatalog);
     this.root = this.policy.create(config.state);
     this.runtime = config.runtimeState ? this.policy.create(config.runtimeState) : this.root;
     this.shared = shared;
@@ -46,10 +47,11 @@ export class Bridge {
     if (this.client?.closed) { this.client = null; this.loaded.clear(); }
     if (this.shared?.client && !this.shared.client.closed) this.client = this.shared.client;
     if (!this.client) {
+      const modelCatalog = this.modelCatalog === undefined ? undefined : this.policy.file(this.modelCatalog);
       const scratch = this.policy.create(path.join(this.runtime, 'tmp'));
       this.policy.create(path.join(this.runtime, 'sqlite'));
       this.policy.create(path.join(this.runtime, 'logs'));
-      const client = new CodexClient({ binary: this.config.binary, cwd: workspace, state: this.runtime, codexHome, scratch, toolHandler: params => this.browserTool(params) });
+      const client = new CodexClient({ binary: this.config.binary, cwd: workspace, state: this.runtime, codexHome, scratch, modelCatalog, toolHandler: params => this.browserTool(params) });
       this.client = client;
       if (this.shared) this.shared.client = client;
       client.on('notification', message => {

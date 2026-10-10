@@ -1,5 +1,10 @@
 # Verification Record
 
+## Bridge-only model catalog (2026-10-10)
+
+- MacBook SSH restored; actual CLI 0.162.1 and managed authentication work, but inherited static Ollama catalog omits GPT-6.1 Sol. A supported app-server catalog override using a model-only snapshot returns GPT-6.1 Sol and its reasoning settings. No global configuration, official application or credential store edited; cache identity fields excluded from the snapshot.
+- 51/51 tests and syntax/manifest checks pass. New coverage: canonical local catalog paths, missing/directory/Documents rejection, validation after file removal, explicit app-server arguments, installation persistence, clearing and refusal before overwriting registration. Existing panel smoke rerun pending. Deployment and real inference/picker/restart checks pending on the MacBook; do not infer entitlement from the catalog alone. Runtime snapshots/probes are ignored and not distributed.
+
 ## Multiple panels (2026-10-09)
 
 - 49/49 tests pass, including worker routing with overlapping request IDs, rejection of non-panel senders, legacy-host failure, shared-index updates, same-chat turn exclusion, scoped browser tools, and keeping chat ownership until an interrupted detached turn is confirmed finished. JavaScript/manifest and whitespace checks pass. Existing synthetic panel smoke passes.

@@ -49,6 +49,20 @@ test('source install refuses live host and missing saved workspace without chang
   assert.throws(() => installSource(f), /Workspace unavailable/);
   assert.equal(fs.existsSync(missing), false); assert.equal(fs.readFileSync(installed.hostPath, 'utf8'), before);
 });
+test('source catalog override persists, can be cleared, and invalid files never change registration', t => {
+  const f = fixture(t); const catalog = path.join(f.home, 'models.json');
+  fs.writeFileSync(catalog, JSON.stringify({ models: [] }));
+  const installed = installSource({ ...f, env: { ...f.env, LOCAL_CODEX_MODEL_CATALOG: catalog } });
+  installSource(f);
+  assert.equal(JSON.parse(fs.readFileSync(installed.configPath)).modelCatalog, catalog);
+  const before = fs.readFileSync(installed.configPath);
+  for (const bad of [path.join(f.home, 'missing.json'), f.home, path.join(f.home, 'Documents/models.json')]) {
+    assert.throws(() => installSource({ ...f, env: { ...f.env, LOCAL_CODEX_MODEL_CATALOG: bad } }));
+    assert.deepEqual(fs.readFileSync(installed.configPath), before);
+  }
+  installSource({ ...f, env: { ...f.env, LOCAL_CODEX_MODEL_CATALOG: '' } });
+  assert.equal(JSON.parse(fs.readFileSync(installed.configPath)).modelCatalog, undefined);
+});
 test('source install migrates known registration across folders and rejects unknown hosts before writes', t => {
   const f = fixture(t); const installed = installSource(f);
   const other = path.join(f.home, 'Dev/new-copy'); fs.cpSync(f.project, other, { recursive: true, filter: file => path.basename(file) !== '.runtime' });

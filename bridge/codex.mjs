@@ -4,7 +4,7 @@ import readline from 'node:readline';
 import path from 'node:path';
 
 export class CodexClient extends EventEmitter {
-  constructor({ binary, cwd, state, codexHome, scratch, toolHandler }) {
+  constructor({ binary, cwd, state, codexHome, scratch, toolHandler, modelCatalog }) {
     super();
     this.pending = new Map();
     this.nextId = 1;
@@ -31,6 +31,7 @@ export class CodexClient extends EventEmitter {
       overrides[`shell_environment_policy.set.${key}`] = value;
     }
     const args = ['app-server', '--listen', 'stdio://'];
+    if (modelCatalog !== undefined) overrides.model_catalog_json = modelCatalog;
     for (const [key, value] of Object.entries(overrides)) args.push('-c', `${key}=${JSON.stringify(value)}`);
     this.child = spawn(binary, args, {
       cwd, stdio: ['pipe', 'pipe', 'pipe'],

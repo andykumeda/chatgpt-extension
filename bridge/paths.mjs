@@ -64,6 +64,17 @@ export class PathPolicy {
     return real;
   }
 
+  file(value) {
+    const absolute = this.assertSafe(value);
+    let real;
+    try { real = fs.realpathSync(absolute); }
+    catch { throw new Error(`Local file unavailable: ${absolute}. Restore it or update the bridge setting; no fallback was used.`); }
+    this.assertSafe(real);
+    if (!fs.statSync(real).isFile()) throw new Error(`Local path is not a file: ${absolute}`);
+    fs.accessSync(real, fs.constants.R_OK);
+    return real;
+  }
+
   create(value) {
     const safe = this.safeFuture(value);
     fs.mkdirSync(safe, { recursive: true, mode: 0o700 });

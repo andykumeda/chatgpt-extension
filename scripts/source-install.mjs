@@ -51,6 +51,8 @@ export function installSource({ project, home = os.homedir(), testing = false, e
   const state = policy.safeFuture(env.LOCAL_CODEX_STATE || previous.state || (testing ? path.join(project, '.runtime/browser-state') : path.join(home, '.codex/local-sidepanel')));
   const requestedRuntime = env.LOCAL_CODEX_RUNTIME_STATE || previous.runtimeState;
   const runtimeState = requestedRuntime ? policy.safeFuture(requestedRuntime) : undefined;
+  const requestedCatalog = Object.hasOwn(env, 'LOCAL_CODEX_MODEL_CATALOG') ? env.LOCAL_CODEX_MODEL_CATALOG : previous.modelCatalog;
+  const modelCatalog = requestedCatalog === undefined || requestedCatalog === '' ? undefined : policy.file(requestedCatalog);
   assertHostIdle(previous.state || state); assertHostIdle(state);
   const indexPath = policy.safeFuture(path.join(state, 'chats.json'));
   const fresh = !fs.existsSync(indexPath);
@@ -67,7 +69,7 @@ export function installSource({ project, home = os.homedir(), testing = false, e
     fs.renameSync(temporary, file);
   };
   assertHostIdle(state);
-  atomic(configPath, JSON.stringify({ binary, codexHome, state, extensionId, runtimeState }, null, 2), 0o600);
+  atomic(configPath, JSON.stringify({ binary, codexHome, state, extensionId, runtimeState, modelCatalog }, null, 2), 0o600);
   atomic(launcher, `#!/bin/sh\nexport LOCAL_CODEX_CONFIG=${quote(configPath)}\nexec ${quote(process.execPath)} ${quote(path.join(info.project, 'bridge/host.mjs'))} "$@"\n`, 0o700);
   atomic(hostPath, JSON.stringify({ name: 'com.local_codex.sidepanel', description: 'Local Codex source installation', path: launcher, type: 'stdio', allowed_origins: [`chrome-extension://${extensionId}/`] }, null, 2), 0o600);
   return { ...info, state, workspace };

@@ -7,6 +7,7 @@ import { PathPolicy, sandboxPolicy } from '../bridge/paths.mjs';
 import { encode, decoder, MAX_FRAME } from '../bridge/framing.mjs';
 import { Store } from '../bridge/store.mjs';
 import { Bridge, pageReference } from '../bridge/service.mjs';
+import { CodexClient } from '../bridge/codex.mjs';
 
 function fixture(t) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'local-sidepanel-test-')));
@@ -50,6 +51,26 @@ test('symlink and dangling-symlink workspace/state escapes are rejected', t => {
 
 test('sandbox has only the selected write root, no network or implicit temp roots', () => {
   assert.deepEqual(sandboxPolicy('/local'), { type: 'workspaceWrite', writableRoots: ['/local'], networkAccess: false, excludeSlashTmp: true, excludeTmpdirEnvVar: true });
+});
+test('catalog files are local, canonical and required; the app-server receives only an explicit override', async t => {
+  const { root, home, policy, local } = fixture(t);
+  const catalog = path.join(local, 'models.json'); fs.writeFileSync(catalog, '{"models":[]}');
+  const alias = path.join(local, 'alias.json'); fs.symlinkSync(catalog, alias);
+  assert.equal(policy.file(alias), catalog);
+  assert.throws(() => policy.file(local), /not a file/);
+  assert.throws(() => policy.file(path.join(local, 'absent.json')), /no fallback/);
+  assert.throws(() => policy.file(path.join(home, 'Documents/models.json')), /forbidden/);
+  const bridge = new Bridge({ state: local, modelCatalog: alias }, () => {});
+  assert.equal(bridge.modelCatalog, catalog);
+  const options = { binary: '/usr/bin/true', cwd: local, state: root, codexHome: local, scratch: local };
+  for (const modelCatalog of [undefined, catalog]) {
+    const client = new CodexClient({ ...options, modelCatalog });
+    const entries = client.child.spawnargs.filter(arg => arg.startsWith('model_catalog_json='));
+    assert.deepEqual(entries, modelCatalog ? [`model_catalog_json=${JSON.stringify(catalog)}`] : []);
+    await new Promise(resolve => client.child.once('exit', resolve));
+  }
+  fs.unlinkSync(catalog);
+  await assert.rejects(bridge.connect(local), /Local file unavailable/);
 });
 
 test('native protocol handles split/coalesced frames and UTF-8', () => {
