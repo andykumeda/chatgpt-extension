@@ -9,17 +9,29 @@
     "sidePanel",
     "nativeMessaging",
     "activeTab",
-    "scripting"
+    "scripting",
+    "storage"
   ],
   "optional_host_permissions": [
     "http://*/*",
     "https://*/*"
   ],
   "background": {
-    "service_worker": "worker.js"
+    "service_worker": "worker.js",
+    "type": "module"
   },
   "action": {
-    "default_title": "Open Local Codex"
+    "default_title": "Open Local Codex",
+    "default_icon": {
+      "16": "icon-16.png",
+      "32": "icon-32.png"
+    }
+  },
+  "icons": {
+    "16": "icon-16.png",
+    "32": "icon-32.png",
+    "48": "icon-48.png",
+    "128": "icon-128.png"
   },
   "commands": {
     "_execute_action": {

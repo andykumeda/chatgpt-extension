@@ -18,7 +18,7 @@
       </div>
     </nav>
     <div id="error" role="alert" hidden></div>
-    <main id="messages" aria-label="Conversation" aria-live="polite"><div id="empty" aria-label="Start a conversation"><img class="brand-mark" src="mark.svg" alt=""></div></main>
+    <main id="messages" aria-label="Conversation" aria-live="polite"><div id="empty" aria-label="Start a conversation"><img class="brand-mark" src="icon-128.png" alt=""></div></main>
     <footer>
       <section id="browserApproval" aria-label="Browser action approval" hidden>
         <strong>Approve browser action?</strong><pre id="browserAction"></pre>
@@ -27,7 +27,6 @@
       <form id="sendForm">
         <textarea id="prompt" aria-label="Message to Codex" placeholder="Do anything" rows="3" maxlength="16000" required></textarea>
         <div class="composer-toolbar">
-          <details id="attachment"><summary id="pageTitle" title="The current page is attached automatically">Current page</summary><div class="page-popover"><div id="pageUrl" class="path"></div><p id="pageSummary"></p><pre id="pagePreview"></pre></div></details>
           <div class="model-controls"><select id="model" aria-label="Model" disabled><option value="">Loading models…</option></select><select id="effort" aria-label="Reasoning effort" disabled><option value="">Medium</option></select></div>
           <button id="stop" class="round-button" type="button" aria-label="Stop response" hidden>■</button><button id="send" class="round-button" type="submit" aria-label="Send message" disabled>↑</button>
         </div>
@@ -48,11 +47,17 @@
       <h2>Permissions for the next message</h2>
       <label class="toggle"><input id="allowEdits" type="checkbox">Allow workspace edits</label>
       <label class="toggle"><input id="allowBrowser" type="checkbox">Live browser this turn</label><span id="browserTarget" class="path"></span>
-      <p class="help">Permissions reset after each message. Browser actions still require approval.</p>
+      <p class="help">These toggles reset after each message. Global browser preferences below apply independently.</p>
       <h2>Page context</h2>
-      <div class="row"><span id="pageAccessStatus" role="status">Checking website access…</span><button id="enablePageAccess">Enable automatic page access</button></div>
-      <p class="help">Allow access to HTTP(S) websites once so the current page attaches automatically when you change sites. Chrome will ask you to confirm. Without this permission, click the toolbar icon on each new site. You can revoke access in Chrome’s extension settings.</p>
-      <p class="help">Granting access does not send your draft or page content. The attached snapshot goes to your configured model provider when you send. Chrome internal pages and the Web Store cannot be attached. Live browser actions still require approval.</p>
+      <div id="currentPageStatus" class="path" role="status"></div>
+      <label for="permissionDuration">Global website access</label>
+      <select id="permissionDuration"><option value="session">This session</option><option value="permanent">Permanently</option></select>
+      <label class="toggle"><input id="autoBrowserActions" type="checkbox">Skip browser-action confirmations</label>
+      <p class="help">This also enables live browser access on future messages. Automated clicks, navigation and form filling can change account data or submit forms. Password/payment fields and downloads remain blocked. Workspace edits are separate.</p>
+      <div class="row"><button id="enablePageAccess">Enable global access</button><button id="revokePageAccess">Revoke global access</button></div>
+      <p id="pageAccessStatus" role="status" class="help">Checking website access…</p>
+      <p class="help">Chrome confirms website access once. Session access expires when Chrome restarts or the extension reloads; permanent access stays until revoked. The current page is included when you send. Restricted Chrome pages are excluded.</p>
+      <p class="help">Granting access does not send your draft or page content. Current-page text goes to your configured model provider when you send. Browser actions require confirmation unless you explicitly opt out above.</p>
       <h2>Versions</h2><dl class="versions"><dt>Extension</dt><dd id="extensionVersion"></dd><dt>Companion app</dt><dd id="appVersion">Not connected</dd><dt>Bridge</dt><dd id="bridgeVersion">Not connected</dd><dt>Protocol</dt><dd id="protocolVersion">Not connected</dd></dl>
     </section>
   </dialog>

@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Bridge } from './service.mjs';
+import { Sessions } from './sessions.mjs';
 import { PathPolicy } from './paths.mjs';
 import { encode, decoder } from './framing.mjs';
 
@@ -33,12 +33,13 @@ try {
     fs.unlinkSync(lock);
     fs.writeFileSync(lock, String(process.pid), { flag: 'wx', mode: 0o600 });
   }
-  bridge = new Bridge(config, send);
+  bridge = new Sessions(config, send);
   const receive = decoder(message => {
     if (!message || !Number.isSafeInteger(message.id) || typeof message.method !== 'string') return;
     const execute = async () => {
-      try { send({ id: message.id, result: await bridge.handle(message.method, message.params) }); }
-      catch (error) { send({ id: message.id, error: error.message }); }
+      const scope = message.sessionId ? { sessionId: message.sessionId } : {};
+      try { send({ ...scope, id: message.id, result: await bridge.handle(message) }); }
+      catch (error) { send({ ...scope, id: message.id, error: error.message }); }
     };
     // Interrupt must bypass the normal request queue while a slow request is in progress.
     if (['stop', 'browserResult'].includes(message.method)) void execute(); else queued = queued.then(execute);

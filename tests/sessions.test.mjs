@@ -1,0 +1,51 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { Sessions } from '../bridge/sessions.mjs';
+
+test('panel sessions share one index, run separate chats, isolate tools and stop, and protect the same chat', async t => {
+  const state = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'local-codex-sessions-')));
+  t.after(() => fs.rmSync(state, { recursive: true, force: true }));
+  const workspace = path.join(state, 'workspace'); fs.mkdirSync(workspace);
+  const events = []; const sessions = new Sessions({ state }, message => events.push(message));
+  const handle = (sessionId, method, params = {}) => sessions.handle({ sessionId, method, params });
+  for (const sessionId of ['panel-a', 'panel-b']) await handle(sessionId, 'handshake', { protocolVersion: 1, minimumProtocolVersion: 1, extensionVersion: '0.3.3' });
+  const [a, b] = [...sessions.panels.values()];
+  const calls = [];
+  const client = { request: async (method, params) => {
+    calls.push({ method, params });
+    if (method === 'turn/start') return { turn: { id: `turn-${params.threadId}` } };
+    if (method === 'turn/interrupt') return {};
+    assert.fail(`Unexpected method: ${method}`);
+  } };
+  sessions.shared.client = client; a.client = client; b.client = client;
+  for (const id of ['chat-a', 'chat-b']) { a.store.data.chats.push({ id, workspace, status: 'idle', messages: [], browserTools: true }); a.loaded.add(id); }
+  assert.equal(a.store, b.store); assert.equal(a.loaded, b.loaded);
+  await handle('panel-a', 'send', { id: 'chat-a', text: 'A', allowBrowser: true });
+  await handle('panel-b', 'send', { id: 'chat-b', text: 'B' });
+  await assert.rejects(handle('panel-b', 'resume', { id: 'chat-a' }), /already running/);
+  const cHandshake = await handle('panel-c', 'handshake', { protocolVersion: 1, minimumProtocolVersion: 1, extensionVersion: '0.3.3' }); assert.equal(cHandshake.protocolVersion, 1);
+  await assert.rejects(handle('panel-c', 'resume', { id: 'chat-a' }), /another panel/);
+  await assert.rejects(handle('panel-c', 'send', { id: 'chat-a', text: 'duplicate' }), /another panel/);
+  for (const bridge of sessions.shared.sessions) bridge.notification({ method: 'item/agentMessage/delta', params: { threadId: 'chat-a', itemId: 'answer-a', delta: 'Only A' } });
+  assert.equal(events.filter(e => e.event === 'delta').length, 1);
+  assert.equal(events.find(e => e.event === 'delta').sessionId, 'panel-a');
+  a.browser.request = async id => ({ success: true, id });
+  assert.deepEqual(await b.browserTool({ threadId: 'chat-a', turnId: 'turn-chat-a', tool: 'local_browser', arguments: { operation: 'read' } }), { success: true, id: 'chat-a' });
+  await assert.rejects(Promise.resolve().then(() => a.browserTool({ threadId: 'chat-b', turnId: 'turn-chat-b', tool: 'local_browser', arguments: { operation: 'read' } })), /not enabled/);
+  await handle('panel-a', 'session/close');
+  assert.equal(b.active.chat.id, 'chat-b'); assert.equal(b.client, client);
+  assert.equal(sessions.shared.owners.has('chat-a'), true);
+  await assert.rejects(handle('panel-c', 'resume', { id: 'chat-a' }), /another panel/);
+  a.notification({ method: 'turn/completed', params: { threadId: 'chat-a', turn: { status: 'interrupted' } } });
+  assert.equal(sessions.shared.owners.has('chat-a'), false);
+  assert.equal(sessions.shared.sessions.has(a), false);
+  assert.equal(calls.at(-1).params.threadId, 'chat-a');
+  assert.equal(JSON.parse(fs.readFileSync(path.join(state, 'chats.json'))).chats.length, 2);
+  b.notification({ method: 'turn/completed', params: { threadId: 'chat-b', turn: { status: 'completed' } } });
+  assert.equal(sessions.shared.owners.size, 0);
+  await assert.rejects(handle('panel-b', 'setWorkspace', { workspace: path.join(state, 'missing') }), /unavailable/);
+  assert.equal(fs.existsSync(path.join(state, 'missing')), false);
+});

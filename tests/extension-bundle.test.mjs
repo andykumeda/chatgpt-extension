@@ -43,6 +43,13 @@ test('extension archive contains its module/resource graph and is reproducible a
   const manifest = JSON.parse(run('/usr/bin/unzip', ['-p', zip, 'manifest.json']));
   assert(files.includes(manifest.background.service_worker));
   assert(files.includes(manifest.side_panel.default_path));
+  for (const [size, icon] of Object.entries({ ...manifest.icons, ...manifest.action.default_icon })) {
+    assert(files.includes(icon), `Archive is missing icon ${icon}`);
+    const png = execFileSync('/usr/bin/unzip', ['-p', zip, icon], { cwd: root });
+    assert.equal(png.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+    assert.equal(png.readUInt32BE(16), Number(size));
+    assert.equal(png.readUInt32BE(20), Number(size));
+  }
   run(process.execPath, ['scripts/bundle-extension.mjs', '--development'], { TZ: 'Asia/Tokyo' });
   assert.equal(hash(), first, 'Archive differs after changing checkout permissions, timestamps or timezone');
 });

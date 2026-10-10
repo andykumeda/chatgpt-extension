@@ -23,7 +23,7 @@ if (id !== config.extensionId) throw new Error('Extension public key does not ma
 const metadata = Object.fromEntries(['appName', 'protocolVersion', 'minimumProtocolVersion', 'chromeWebStoreUrl', 'downloadUrl'].map(key => [key, config[key]]));
 const expectedMetadata = `// Public distribution metadata. Keep synchronized with distribution/config.json.\nexport default ${JSON.stringify(metadata, null, 2)};\n`;
 if (fs.readFileSync(path.join(project, 'extension/distribution.js'), 'utf8') !== expectedMetadata) throw new Error('Synchronize extension/distribution.js with distribution/config.json before packaging.');
-const files = ['manifest.json', 'worker.js', 'panel.html', 'panel.css', 'panel.js', 'capture.js', 'browser.js', 'browser-dom.js', 'mark.svg', 'distribution.js'];
+const files = ['manifest.json', 'worker.js', 'connections.js', 'panel.html', 'panel.css', 'panel.js', 'capture.js', 'browser.js', 'browser-dom.js', 'permissions.js', 'copy.svg', 'icon-16.png', 'icon-32.png', 'icon-48.png', 'icon-128.png', 'distribution.js'];
 const archiveTime = new Date(Number(git(['log', '-1', '--format=%ct'])) * 1000);
 const stage = fs.mkdtempSync(path.join(os.tmpdir(), 'local-codex-extension-'));
 try {

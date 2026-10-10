@@ -1,5 +1,13 @@
 # Live Browser Work
 
+## Current permission preferences — 2026-10-09
+
+App settings offers explicit global HTTP(S) website access for this session or permanently, plus a separate opt-in to skip supported browser-action confirmations. The user requested both scopes. Enabling the action option also enables live browser on later website messages; only the selected current tab is pinned for each turn. It does not grant workspace writes, arbitrary JavaScript, credential/payment access, or downloads. Without that action opt-in, the original per-action approval gate remains.
+
+Session preferences use Chrome storage.session and expire on browser restart or extension reload/update; local-only metadata allows the worker/panel to remove the corresponding persistent Chrome optional grants. Permanent access remains until revoked. Chrome's initial website permission confirmation cannot be bypassed. The composer has no page chooser/preview or attached-message label; each Send still captures the current page freshly. Copy icons read the current response body, including streaming and resumed chunks.
+
+Verification: 46 source tests, synthetic panel permission/clipboard/action smoke, syntax and 320–1440px layout checks. Native Chrome confirmation and physical browser restart for this new session mode have not been exercised; restart expiry/removal is unit-tested against the documented storage lifecycle. Earlier native browser evidence below applies to prior increments.
+
 Requested scope: live page reading, click, scroll, navigation and form filling, while retaining the existing workspace boundary and managed authentication. Full official-extension parity is not claimed.
 
 ## Plan

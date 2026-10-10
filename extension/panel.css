@@ -23,7 +23,7 @@ main { flex: 1; min-height: 0; overflow: auto; padding: 20px; position: relative
 .message .role { font-size: 12px; font-weight: 600; margin-bottom: 6px; }
 .message.user { background: #f4f4f4; border-radius: 20px; padding: 14px 18px; margin: 0 0 24px auto; width: fit-content; max-width: 90%; }
 .message .body { white-space: pre-wrap; }
-.message .source { margin-top: 6px; font-size: 11px; color: var(--muted); }
+.copy-output { width: 44px; height: 44px; padding: 0; font-size: 22px; color: #666; }
 footer { padding: 12px 12px 0; flex-shrink: 0; }
 #sendForm { border: 1px solid var(--border); border-radius: 28px; box-shadow: 0 2px 15px #00000008; padding: 18px 16px 10px; }
 textarea { display: block; width: 100%; resize: none; border: 0; background: transparent; height: 72px; min-height: 72px; max-height: 170px; padding: 0; font-size: 18px; line-height: 1.5; }
@@ -36,9 +36,6 @@ textarea:focus { outline: none; }
 .round-button { width: 42px; min-height: 42px; border-radius: 50%; background: #202123; color: white; font-size: 28px; padding: 0; flex-shrink: 0; }
 .round-button:hover { background: #444; }
 #send:disabled { background: #8f8f8f; opacity: 1; }
-#attachment { position: relative; max-width: 90px; min-width: 28px; }
-#attachment summary { cursor: pointer; color: #777; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 10px 0; }
-.page-popover { position: absolute; bottom: 48px; left: 0; width: min(320px, calc(100vw - 60px)); max-height: 260px; overflow: auto; background: white; border: 1px solid var(--border); padding: 14px; border-radius: 16px; box-shadow: 0 5px 20px #0001; z-index: 2; }
 .status { font-size: 11px; color: #777; min-height: 16px; text-align: center; padding: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #error { background: #fff0f0; color: #8f2525; padding: 12px 16px; overflow-wrap: anywhere; max-height: 25vh; overflow: auto; flex-shrink: 0; }
 dialog { border: 1px solid var(--border); border-radius: 24px; width: min(440px, calc(100% - 24px)); max-height: calc(100dvh - 40px); padding: 20px; }
@@ -49,6 +46,7 @@ h1 { font-size: 22px; margin: 0; } h2 { font-size: 14px; margin: 24px 0 12px; }
 .settings button:not(.icon-button) { background: #f3f3f3; }
 .settings input:not([type="checkbox"]) { border: 1px solid #ddd; border-radius: 10px; padding: 10px; width: 100%; min-width: 0; }
 .settings label { display: block; margin-bottom: 8px; }
+.settings select { border: 1px solid #ddd; border-radius: 8px; padding: 10px; margin-bottom: 12px; background: white; max-width: 100%; }
 .settings .toggle { display: flex; gap: 8px; align-items: center; min-height: 36px; }
 .help, .path { font-size: 12px; color: #666; line-height: 1.5; overflow-wrap: anywhere; }
 .setup-links { display: flex; flex-direction: column; gap: 10px; font-size: 12px; }
@@ -59,4 +57,4 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 160px; overflo
 #browserApproval { padding: 14px; border: 1px solid var(--border); border-radius: 16px; margin-bottom: 12px; }
 [hidden] { display: none !important; }
 @media (min-width: 600px) { .chat-header { min-height: 66px; } #chats { font-size: 28px; } .menu { width: 522px; } .menu button { font-size: 26px; } .version { font-size: 24px; } footer { padding: 16px 16px 0; } #sendForm { border-radius: 40px; padding: 28px 24px 16px; } textarea { height: 74px; min-height: 74px; font-size: 28px; } .model-controls select { font-size: 23px; max-width: 220px; } #effort { max-width: 125px; } .round-button { width: 56px; min-height: 56px; font-size: 36px; } .composer-toolbar { margin-top: 16px; } #empty .brand-mark { width: 102px; height: 102px; transform: translateY(12px); } }
-@media (max-width: 360px) { .model-controls select { max-width: 100px; font-size: 12px; } #effort { max-width: 65px; } #attachment { max-width: 50px; } }
+@media (max-width: 360px) { .model-controls select { max-width: 100px; font-size: 12px; } #effort { max-width: 65px; } }

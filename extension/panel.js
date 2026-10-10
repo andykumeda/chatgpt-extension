@@ -1,10 +1,12 @@
 import { captureActivePage } from './capture.js';
 import { LiveBrowser } from './browser.js';
 import distribution from './distribution.js';
+import { GlobalAccess, PAGE_ORIGINS } from './permissions.js';
 
 const $ = id => document.getElementById(id);
 const extensionVersion = chrome.runtime.getManifest().version;
-const pageOrigins = ['http://*/*', 'https://*/*'];
+const pageOrigins = PAGE_ORIGINS;
+const globalAccess = new GlobalAccess(chrome);
 $('extensionVersion').textContent = extensionVersion;
 $('menuVersion').textContent = `v${extensionVersion}`;
 for (const [id, value] of [['downloadLink', distribution.downloadUrl], ['storeLink', distribution.chromeWebStoreUrl]]) {
@@ -13,8 +15,14 @@ for (const [id, value] of [['downloadLink', distribution.downloadUrl], ['storeLi
 }
 if (!$('downloadLink').hidden || !$('storeLink').hidden) $('setupAvailability').textContent = 'See the installation instructions and available extension downloads.';
 const setupGuidance = 'Run ./install.sh from your Local Codex folder, then codex login if needed. For updates, close the panel, run npm run update and reload the extension in chrome://extensions.';
+const panelConflict = message => message.includes('The bridge is open in another panel.');
+function connectionGuidance(message) {
+  return panelConflict(message)
+    ? 'Another Local Codex panel is connected, possibly in a different Chrome window. Close that panel, then reconnect here. No reinstall or sign-in is needed.'
+    : `${message} ${setupGuidance}`;
+}
 
-let port, connected = false, compatible = false, authenticated = false, busy = false, current = null, page = null, nextId = 1;
+let port, connecting = false, connected = false, compatible = false, authenticated = false, busy = false, current = null, page = null, nextId = 1;
 const pending = new Map();
 let assistantBody = null, itemId = null;
 const browser = new LiveBrowser();
@@ -24,7 +32,8 @@ function endBrowser() {
   browserApproval?.resolve(false); browserApproval = null;
   $('browserApproval').hidden = true; $('browserTarget').textContent = '';
 }
-function approveBrowser(details) {
+async function approveBrowser(details) {
+  if (await globalAccess.actionsEnabled() && (!details.requestOrigin || await chrome.permissions.contains({ origins: [details.requestOrigin] }))) return true;
   if (browserApproval) return Promise.resolve(false);
   $('browserAction').textContent = `${details.operation.operation.toUpperCase()}\nPage: ${details.pageUrl}\n${details.element ? `Element: ${details.element.label || details.element.ref}\n` : ''}${details.operation.text ? `Text: ${details.operation.text}\n` : ''}${details.destination ? `Destination: ${details.destination}\n` : ''}${details.requestOrigin ? `Website access: ${details.requestOrigin}` : ''}`;
   $('browserApproval').hidden = false;
@@ -54,11 +63,12 @@ function controls() {
   $('chats').disabled = busy;
   $('newChat').disabled = busy || !connected;
   $('applyWorkspace').disabled = busy || !compatible;
-  $('connect').disabled = busy;
+  $('connect').disabled = busy || connecting;
   $('allowBrowser').disabled = busy;
   $('allowEdits').disabled = busy;
   $('model').disabled = busy || !models.length;
   $('effort').disabled = busy || !$('effort').options.length;
+  for (const id of ['permissionDuration', 'autoBrowserActions', 'enablePageAccess']) $(id).disabled = busy;
 }
 function setState(status) { $('state').textContent = status; busy = ['Starting', 'Running', 'Stopping'].includes(status); controls(); }
 function request(method, params = {}) {
@@ -76,17 +86,27 @@ function request(method, params = {}) {
 function resetMessages() {
   $('messages').replaceChildren();
   const empty = document.createElement('div'); empty.id = 'empty'; empty.setAttribute('aria-label', 'Start a conversation');
-  const mark = document.createElement('img'); mark.className = 'brand-mark'; mark.src = 'mark.svg'; mark.alt = '';
+  const mark = document.createElement('img'); mark.className = 'brand-mark'; mark.src = 'icon-128.png'; mark.alt = '';
   empty.append(mark); $('messages').append(empty); assistantBody = null; itemId = null;
 }
-function appendMessage(role, text, attachment) {
+function appendMessage(role, text) {
   $('empty')?.remove();
   const article = document.createElement('article'); article.className = `message ${role}`;
   const label = document.createElement('div'); label.className = 'role'; label.textContent = role === 'assistant' ? 'Codex' : 'You';
   const body = document.createElement('div'); body.className = 'body'; body.textContent = text;
   article.append(label, body);
-  if (attachment) {
-    const source = document.createElement('div'); source.className = 'source'; source.textContent = `Attached: ${attachment.title || attachment.url}`; article.append(source);
+  if (role === 'assistant') {
+    const copy = document.createElement('button'); copy.type = 'button'; copy.className = 'copy-output';
+    const icon = document.createElement('img'); icon.src = 'copy.svg'; icon.alt = ''; icon.width = 18; icon.height = 18;
+    copy.append(icon); copy.title = 'Copy response'; copy.setAttribute('aria-label', 'Copy response');
+    copy.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(body.textContent);
+        copy.setAttribute('aria-label', 'Response copied'); copy.title = 'Response copied';
+        setTimeout(() => { copy.setAttribute('aria-label', 'Copy response'); copy.title = 'Copy response'; }, 1500);
+      } catch { fail('Could not copy this response. Select its text and copy it manually.'); }
+    });
+    article.append(copy);
   }
   $('messages').append(article);
   $('messages').scrollTop = $('messages').scrollHeight;
@@ -120,12 +140,12 @@ function events(message) {
   if (message.event === 'historyStart') { resetMessages(); return; }
   if (message.event === 'historyMessage') {
     if (message.append) $('messages').lastElementChild.querySelector('.body').append(document.createTextNode(message.message.text));
-    else appendMessage(message.message.role, message.message.text, message.message.page);
+    else appendMessage(message.message.role, message.message.text);
     return;
   }
   if (message.chatId !== current?.id) return;
   if (message.event === 'delta') {
-    if (!assistantBody) assistantBody = appendMessage('assistant', '', null);
+    if (!assistantBody) assistantBody = appendMessage('assistant', '');
     if (itemId && message.itemId !== itemId) assistantBody.append(document.createTextNode('\n\n'));
     itemId = message.itemId;
     assistantBody.append(document.createTextNode(message.text));
@@ -139,14 +159,17 @@ function events(message) {
   }
 }
 async function connect() {
+  if (connecting) return;
+  connecting = true;
   endBrowser(); startupError = null; connected = false; compatible = false; authenticated = false; models = []; controls();
   for (const id of ['appVersion', 'bridgeVersion', 'protocolVersion']) $(id).textContent = 'Not connected';
   clearError();
   if (port) port.disconnect();
-  port = chrome.runtime.connectNative('com.local_codex.sidepanel');
+  port = chrome.runtime.connect({ name: 'local-codex-panel' });
   const thisPort = port;
   $('connection').textContent = 'Connecting';
   port.onMessage.addListener(message => {
+    if (port !== thisPort) return;
     if (message.id !== undefined) {
       const entry = pending.get(message.id);
       if (!entry) return;
@@ -163,13 +186,14 @@ async function connect() {
     $('connection').textContent = 'Disconnected'; setState('Interrupted');
     for (const entry of pending.values()) { clearTimeout(entry.timer); entry.reject(new Error(error)); }
     pending.clear();
-    fail(`${error} ${setupGuidance} Close any other Local Codex panel first.`);
+    fail(connectionGuidance(error));
   });
   try {
     let compatibility;
     try {
       compatibility = await request('handshake', { protocolVersion: 1, minimumProtocolVersion: 1, extensionVersion });
     } catch (error) {
+      if (panelConflict(error.message)) throw new Error(connectionGuidance(error.message));
       throw new Error(`The local bridge could not confirm compatibility: ${error.message} ${setupGuidance}`);
     }
     if (!compatibility || !Number.isSafeInteger(compatibility.protocolVersion)
@@ -196,6 +220,7 @@ async function connect() {
     $('model').value = models.find(model => model.model === preferred)?.model || models.find(model => model.isDefault)?.model || models[0]?.model || '';
     updateEfforts(); controls();
   } catch (error) { connected = false; authenticated = false; models = []; fail(error.message); setState('Error'); }
+  finally { connecting = false; controls(); }
 }
 async function resume(id) {
   clearError(); setState('Starting');
@@ -225,27 +250,20 @@ $('chats').addEventListener('change', () => {
 });
 async function captureCurrentPage() {
   page = null;
-  $('pageTitle').textContent = 'Current page';
-  $('pagePreview').textContent = '';
-  $('pageUrl').textContent = '';
+  $('currentPageStatus').textContent = 'Checking current page…';
   try {
+    await globalAccess.reconcile();
     const result = await captureActivePage();
     if (!result) {
-      $('pageTitle').textContent = 'No page attached';
-      $('pageTitle').title = 'Chrome internal pages and the Web Store cannot be attached.';
-      $('pageSummary').textContent = 'Chat is available here without page context. Open a normal website to attach its current page automatically.';
+      $('currentPageStatus').textContent = 'No webpage context on this tab.';
       return null;
     }
-    $('pageTitle').title = 'The current page is attached automatically';
     page = result;
-    $('pageTitle').textContent = page.title || 'Current page'; $('pageUrl').textContent = page.url;
-    $('pageSummary').textContent = `${page.text.length.toLocaleString()} characters${page.truncated ? ' (truncated)' : ''}${page.selectedText ? ' / selection included' : ''}`;
-    $('pagePreview').textContent = `${page.selectedText ? `Selection:\n${page.selectedText}\n\n` : ''}${page.text}`;
+    $('currentPageStatus').textContent = `${page.title || 'Current page'} · ${page.url}`;
     return page;
   } catch (error) {
-    $('pageTitle').textContent = 'Page unavailable';
-    $('pageSummary').textContent = 'Enable automatic page access in App settings, or click the Local Codex toolbar icon on this webpage.';
-    throw new Error(`Cannot attach the current page. In App settings → Page context, enable automatic page access once, or click the Local Codex toolbar icon on this website, then send again. ${error.message}`);
+    $('currentPageStatus').textContent = 'Current page unavailable. Enable website access or use the toolbar icon.';
+    throw new Error(`Cannot access the current page. In App settings → Page context, enable global website access, or click the Local Codex toolbar icon on this website, then send again. ${error.message}`);
   }
 }
 function updateEfforts() {
@@ -263,9 +281,17 @@ $('menuButton').addEventListener('click', () => {
 });
 async function refreshPageAccess() {
   try {
+    await globalAccess.reconcile();
     const enabled = await chrome.permissions.contains({ origins: pageOrigins });
-    $('pageAccessStatus').textContent = enabled ? 'Automatic website access enabled' : 'Automatic access not enabled for all websites';
-    $('enablePageAccess').disabled = enabled;
+    const mode = await globalAccess.mode();
+    const { globalAccess: preference } = await chrome.storage.local.get('globalAccess');
+    if (mode !== 'off') {
+      $('permissionDuration').value = mode;
+      $('autoBrowserActions').checked = preference?.autoActions === true;
+    }
+    $('pageAccessStatus').textContent = enabled ? `Global website access enabled (${mode === 'session' ? 'this session' : 'permanently'})` : 'Global website access is off';
+    $('revokePageAccess').disabled = !enabled;
+    $('enablePageAccess').disabled = busy;
   } catch {
     $('pageAccessStatus').textContent = 'Could not check website access';
     $('enablePageAccess').disabled = false;
@@ -274,14 +300,25 @@ async function refreshPageAccess() {
 $('enablePageAccess').addEventListener('click', async () => {
   // Request synchronously from this explicit click, before any await loses the user gesture.
   $('enablePageAccess').disabled = true;
+  const duration = $('permissionDuration').value, autoActions = $('autoBrowserActions').checked;
+  let granted = false;
   try {
-    const granted = await chrome.permissions.request({ origins: pageOrigins });
+    granted = await chrome.permissions.request({ origins: pageOrigins });
+    if (granted) await globalAccess.save(duration, autoActions);
     await refreshPageAccess();
     if (granted) {
       clearError();
       await captureCurrentPage().catch(error => fail(error.message));
     } else $('pageAccessStatus').textContent = 'Access was not granted. Use the toolbar icon on each new site.';
-  } catch (error) { $('enablePageAccess').disabled = false; fail(`Could not enable automatic page access. ${error.message}`); }
+  } catch (error) {
+    if (granted) await globalAccess.revoke().catch(() => {});
+    $('enablePageAccess').disabled = busy;
+    fail(`Could not enable global access. ${error.message}`);
+  }
+});
+$('revokePageAccess').addEventListener('click', async () => {
+  try { endBrowser(); await globalAccess.revoke(); await refreshPageAccess(); $('autoBrowserActions').checked = false; await captureCurrentPage().catch(() => {}); }
+  catch (error) { fail(`Could not revoke global access. ${error.message}`); }
 });
 chrome.permissions.onAdded.addListener(refreshPageAccess);
 chrome.permissions.onRemoved.addListener(refreshPageAccess);
@@ -303,7 +340,8 @@ $('sendForm').addEventListener('submit', async event => {
   try {
     await captureCurrentPage();
     if (!models.length) throw new Error('Reconnect in App settings to load available models.');
-    if ($('allowBrowser').checked) {
+    const browserEnabled = $('allowBrowser').checked || (Boolean(page) && await globalAccess.actionsEnabled());
+    if (browserEnabled) {
       if (!page) throw new Error('Live browser access needs an HTTP(S) webpage. Open a website or turn off Live browser this turn in App settings.');
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       const target = await browser.enable(tab);
@@ -313,9 +351,9 @@ $('sendForm').addEventListener('submit', async event => {
       const result = await request('new', { workspace: $('workspace').value }); current = result.chat; resetMessages();
       $('chatWorkspace').textContent = `Chat workspace: ${current.workspace}`;
     }
-    appendMessage('user', text, page); assistantBody = null; itemId = null;
-    const result = await request('send', { id: current.id, text, page, allowEdits: $('allowEdits').checked, allowBrowser: $('allowBrowser').checked, model: $('model').value, effort: $('effort').value || null });
-    $('prompt').value = ''; $('attachment').open = false; $('allowEdits').checked = false; $('allowBrowser').checked = false;
+    appendMessage('user', text); assistantBody = null; itemId = null;
+    const result = await request('send', { id: current.id, text, page, allowEdits: $('allowEdits').checked, allowBrowser: browserEnabled, model: $('model').value, effort: $('effort').value || null });
+    $('prompt').value = ''; $('allowEdits').checked = false; $('allowBrowser').checked = false;
     if (['starting', 'running'].includes(result.status)) setState('Running');
     await refreshChats();
   } catch (error) { endBrowser(); setState('Error'); fail(startupError || error.message); }
