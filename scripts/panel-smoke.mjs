@@ -38,7 +38,9 @@ try {
         remove: async () => { window.pageAccess = false; return true; },
         onAdded: noopEvent, onRemoved: { addListener(fn) { permissionsRemoved = fn; } },
       },
-      runtime: { getManifest: () => ({ version }), connect: () => ({ onMessage: { addListener(fn) { listener = fn; } }, onDisconnect: noopEvent, disconnect() {}, postMessage(message) {
+      runtime: { getManifest: () => ({ version }), connect: () => {
+        if (sessionStorage.getItem('protocolMode') === 'connect-throws') throw new Error('Extension context invalidated.');
+        return { onMessage: { addListener(fn) { listener = fn; } }, onDisconnect: noopEvent, disconnect() {}, postMessage(message) {
         window.calls.push(message);
         const result = ({ handshake: { protocolVersion: 1, minimumProtocolVersion: 1, bridgeVersion: version }, hello: { workspace: '/local/workspace', authenticated: true }, list: { chats: [] }, models: { models: [
           { model: 'model-a', displayName: '5.6 Sol', isDefault: true, defaultReasoningEffort: 'medium', supportedReasoningEfforts: [{ reasoningEffort: 'medium' }, { reasoningEffort: 'high' }] },
@@ -49,7 +51,7 @@ try {
           if (message.method === 'handshake' && sessionStorage.getItem('protocolMode') === 'legacy') { listener({ id: message.id, error: 'Unknown method: handshake' }); return; }
           if (message.method === 'handshake' && sessionStorage.getItem('protocolMode') === 'incompatible') { listener({ id: message.id, result: { protocolVersion: 2, minimumProtocolVersion: 2, bridgeVersion: '1.0.0' } }); return; }
           listener({ id: message.id, result }); if (message.method === 'send' && !window.holdTurn) setTimeout(() => { listener({ event: 'delta', chatId: 'test-chat', itemId: 'answer', text: 'Streamed response' }); listener({ event: 'delta', chatId: 'test-chat', itemId: 'answer', text: '\nFinal text' }); listener({ event: 'state', chatId: 'test-chat', status: 'completed' }); }, 10); });
-      } }) },
+      } }; } },
       tabs: { query: async () => [{ id: 1, title: 'Example', url: window.activeURL || undefined }], get: async () => ({ id: 1, url: window.activeURL }), onActivated: noopEvent, onUpdated: noopEvent },
       scripting: { executeScript: async args => { if (!window.activeURL) throw new Error('Cannot access a chrome:// URL'); if (window.denyCapture || (window.needsPageAccess && !window.pageAccess)) throw new Error('Cannot access contents of the page. Extension manifest must request permission to access the respective host.'); window.captureCount++; return [{ documentId: 'document-1', result: { title: 'Example', url: window.activeURL, text: `Fresh snapshot ${window.captureCount}`, selectedText: '', truncated: false, snapshot: 'browser-snapshot', elements: [{ ref: 'e1', label: 'Ordinary button' }] } }]; } },
     };
@@ -210,6 +212,18 @@ try {
       assert.equal(await page.locator('#error').isVisible(), false);
     }
   }
+  await page.evaluate(() => sessionStorage.setItem('protocolMode', 'connect-throws'));
+  await page.reload();
+  await page.waitForFunction(() => !document.getElementById('error').hidden);
+  assert.match(await page.locator('#error').textContent(), /reload.*chrome:\/\/extensions/i);
+  assert.equal(await page.locator('#connection').textContent(), 'Disconnected');
+  assert.equal(await page.locator('#connect').isDisabled(), false);
+  assert.equal(await page.locator('#send').isDisabled(), true);
+  await page.evaluate(() => sessionStorage.removeItem('protocolMode'));
+  await page.locator('#menuButton').click(); await page.locator('#openSettings').click();
+  await page.locator('#connect').click();
+  await page.waitForFunction(() => !document.getElementById('model').disabled);
+  assert.equal(await page.locator('#error').isVisible(), false);
   assert.deepEqual(errors, []);
   console.log('Panel UI passed: no attachment label/page picker; streamed/resumed response copying and clipboard errors; session/permanent website preferences, opt-in action bypass, revocation and separate workspace edits; draft preserved without automatic send, fresh cross-site context, model/effort selection, 320–1440px layouts, restricted tabs allow chat without stale attachments, compatibility errors prevent startup/send, no page errors.');
 } finally { await browser?.close(); server.close(); }

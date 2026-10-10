@@ -17,6 +17,7 @@ if (!$('downloadLink').hidden || !$('storeLink').hidden) $('setupAvailability').
 const setupGuidance = 'Run ./install.sh from your Local Codex folder, then codex login if needed. For updates, close the panel, run npm run update and reload the extension in chrome://extensions.';
 const panelConflict = message => message.includes('The bridge is open in another panel.');
 function connectionGuidance(message) {
+  if (/extension context invalidated/i.test(message)) return 'This panel belongs to an extension that was reloaded. Close this panel, reload Local Codex in chrome://extensions, then reopen its toolbar icon. No reinstall or sign-in is needed.';
   return panelConflict(message)
     ? 'Another Local Codex panel is connected, possibly in a different Chrome window. Close that panel, then reconnect here. No reinstall or sign-in is needed.'
     : `${message} ${setupGuidance}`;
@@ -164,31 +165,32 @@ async function connect() {
   endBrowser(); startupError = null; connected = false; compatible = false; authenticated = false; models = []; controls();
   for (const id of ['appVersion', 'bridgeVersion', 'protocolVersion']) $(id).textContent = 'Not connected';
   clearError();
-  if (port) port.disconnect();
-  port = chrome.runtime.connect({ name: 'local-codex-panel' });
-  const thisPort = port;
-  $('connection').textContent = 'Connecting';
-  port.onMessage.addListener(message => {
-    if (port !== thisPort) return;
-    if (message.id !== undefined) {
-      const entry = pending.get(message.id);
-      if (!entry) return;
-      pending.delete(message.id); clearTimeout(entry.timer);
-      if (message.error) entry.reject(new Error(message.error)); else entry.resolve(message.result);
-    } else events(message);
-  });
-  port.onDisconnect.addListener(() => {
-    const runtimeError = chrome.runtime.lastError?.message;
-    const error = startupError || runtimeError || 'Native bridge disconnected.';
-    if (port !== thisPort) return;
-    port = null; connected = false; compatible = false; authenticated = false;
-    endBrowser();
-    $('connection').textContent = 'Disconnected'; setState('Interrupted');
-    for (const entry of pending.values()) { clearTimeout(entry.timer); entry.reject(new Error(error)); }
-    pending.clear();
-    fail(connectionGuidance(error));
-  });
   try {
+    if (port) port.disconnect();
+    port = null;
+    $('connection').textContent = 'Connecting';
+    port = chrome.runtime.connect({ name: 'local-codex-panel' });
+    const thisPort = port;
+    port.onMessage.addListener(message => {
+      if (port !== thisPort) return;
+      if (message.id !== undefined) {
+        const entry = pending.get(message.id);
+        if (!entry) return;
+        pending.delete(message.id); clearTimeout(entry.timer);
+        if (message.error) entry.reject(new Error(message.error)); else entry.resolve(message.result);
+      } else events(message);
+    });
+    port.onDisconnect.addListener(() => {
+      const runtimeError = chrome.runtime.lastError?.message;
+      const error = startupError || runtimeError || 'Native bridge disconnected.';
+      if (port !== thisPort) return;
+      port = null; connected = false; compatible = false; authenticated = false;
+      endBrowser();
+      $('connection').textContent = 'Disconnected'; setState('Interrupted');
+      for (const entry of pending.values()) { clearTimeout(entry.timer); entry.reject(new Error(error)); }
+      pending.clear();
+      fail(connectionGuidance(error));
+    });
     let compatibility;
     try {
       compatibility = await request('handshake', { protocolVersion: 1, minimumProtocolVersion: 1, extensionVersion });
@@ -219,7 +221,12 @@ async function connect() {
     const preferred = localStorage.getItem('model');
     $('model').value = models.find(model => model.model === preferred)?.model || models.find(model => model.isDefault)?.model || models[0]?.model || '';
     updateEfforts(); controls();
-  } catch (error) { connected = false; authenticated = false; models = []; fail(error.message); setState('Error'); }
+  } catch (error) {
+    connected = false; authenticated = false; models = [];
+    $('connection').textContent = 'Disconnected';
+    fail(/extension context invalidated/i.test(error.message) ? connectionGuidance(error.message) : error.message);
+    setState('Error');
+  }
   finally { connecting = false; controls(); }
 }
 async function resume(id) {
