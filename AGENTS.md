@@ -7,5 +7,5 @@
 - Commit all completed task changes locally before the final response, without waiting for a separate commit request. Use focused commits and stage an explicit file allowlist.
 - Preserve unrelated user changes. Never include credentials, private data, runtime state, logs, local handoff notes, or unrelated files in a commit.
 - An explicit user request to leave changes uncommitted takes precedence. If a commit is blocked by permissions, signing, a failed check, or incomplete work, report the blocker and clearly identify what remains uncommitted; do not call the task complete.
-- Report the commit hash and whether it was pushed. A local commit does not authorize a push, release, or deployment; perform those only when separately authorized or required by the requested delivery.
+- Push completed task commits to GitHub after committing locally, per the user’s standing authorization. Report the commit hash and push result. Releases and deployments still require separate authorization.
 - Keep a concise local-only handoff in the ignored `.runtime/HANDOFF.md`; never stage or publish it.
