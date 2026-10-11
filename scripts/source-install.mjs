@@ -5,6 +5,20 @@ import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { PathPolicy } from '../bridge/paths.mjs';
 
+export function nodeLauncherPath(executable = process.execPath) {
+  // Node resolves Homebrew's symlink to a versioned Cellar path. Cleanup after
+  // an upgrade removes that path; the formula's opt link survives upgrades.
+  const match = executable.match(/^(.*)\/Cellar\/([^/]+)\/[^/]+\/bin\/node$/);
+  if (match) {
+    const stable = path.join(match[1], 'opt', match[2], 'bin/node');
+    try {
+      fs.accessSync(stable, fs.constants.X_OK);
+      if (fs.realpathSync(stable) === fs.realpathSync(executable)) return stable;
+    } catch {}
+  }
+  return executable;
+}
+
 export function assertHostIdle(state) {
   const lock = path.join(state, 'bridge.lock');
   if (!fs.existsSync(lock)) return;
@@ -70,7 +84,7 @@ export function installSource({ project, home = os.homedir(), testing = false, e
   };
   assertHostIdle(state);
   atomic(configPath, JSON.stringify({ binary, codexHome, state, extensionId, runtimeState, modelCatalog }, null, 2), 0o600);
-  atomic(launcher, `#!/bin/sh\nexport LOCAL_CODEX_CONFIG=${quote(configPath)}\nexec ${quote(process.execPath)} ${quote(path.join(info.project, 'bridge/host.mjs'))} "$@"\n`, 0o700);
+  atomic(launcher, `#!/bin/sh\nexport LOCAL_CODEX_CONFIG=${quote(configPath)}\nexec ${quote(nodeLauncherPath())} ${quote(path.join(info.project, 'bridge/host.mjs'))} "$@"\n`, 0o700);
   atomic(hostPath, JSON.stringify({ name: 'com.local_codex.sidepanel', description: 'Local Codex source installation', path: launcher, type: 'stdio', allowed_origins: [`chrome-extension://${extensionId}/`] }, null, 2), 0o600);
   return { ...info, state, workspace };
 }

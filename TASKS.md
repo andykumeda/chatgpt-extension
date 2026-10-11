@@ -138,3 +138,13 @@ State: Verified. Exact Chrome missing-host error reproduced on synthetic HTTP pa
 ### Automatic access update published
 
 State: Deployed (artifacts); actual Chrome reload and explicit website permission remain user actions. Code b552870c317403c9c3857562c3a77a068700bf75 pushed to main. Release https://github.com/andykumeda/chatgpt-extension/releases/tag/v0.3.3 contains source/extension ZIPs/checksums, compatible with existing 0.3.2 companions. Hosted checks 37866858016 and release 37866876146 passed. Four assets anonymously downloaded; sizes, digests, published checksums, committed source provenance and archive file contents verified. Source ZIP compressed bytes differ between local/hosted builds, but every archive path/content matches; extension ZIP is byte-identical. Actual reported Mac/domain was not supplied; browser policy blocked Mini chrome://extensions inspection/reload, no workaround attempted, and no real profile permission changed.
+
+## Homebrew Node upgrade connection repair — 2026-10-11
+
+State: Verified (source); Deployed (this Mac's generated launcher only).
+
+The reported compatibility/disconnection error was reproduced as an installed launcher pointing to the removed Node `26.10.0_2` Cellar executable after Homebrew upgraded Node to `26.11.1`. The source installer now chooses the stable link for the same Homebrew formula only when its executable resolves to the installing runtime. Other Node installations retain their existing path; no PATH-based runtime substitution is introduced. Files: `scripts/source-install.mjs`, `tests/source-install.test.mjs`, README and installation recovery documentation.
+
+Verification: all 52 tests and JavaScript/manifest checks passed. Regression covers Apple Silicon/Intel prefixes, unversioned/versioned formulas, simulated upgrade with old-version removal, mismatched/broken links and generated-launcher selection. Repaired this Mac's source registration, preserving the parsed host configuration and byte-identical chat index. A real framed native handshake and authenticated ChatGPT `hello` passed through the repaired launcher, with exit 0; no inference or page content was sent. The old launcher/configuration were backed up under ignored `.runtime`.
+
+Limitations/release: the actual Chrome side-panel reconnect remains a user smoke check. Other Macs, public artifacts and the optional companion were not updated. Source changes committed locally at completion; no push or public release authorized. Existing installations require one installer rerun from the fixed source.

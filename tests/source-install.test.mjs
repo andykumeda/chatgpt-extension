@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { installSource } from '../scripts/source-install.mjs';
+import { installSource, nodeLauncherPath } from '../scripts/source-install.mjs';
 const source = fs.realpathSync(new URL('..', import.meta.url));
 function fixture(t) {
   const home = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'local-codex-source-')));
@@ -18,9 +18,40 @@ function fixture(t) {
   const env = { ...process.env, HOME: home, CODEX_BINARY: binary };
   return { home, project, env };
 }
+test('Homebrew launcher survives a Node upgrade and removal of the old Cellar version', t => {
+  const f = fixture(t);
+  for (const formula of ['node', 'node@22']) {
+    const prefix = path.join(f.home, formula === 'node' ? 'opt/homebrew' : 'usr/local');
+    const first = path.join(prefix, 'Cellar', formula, '22.0.0');
+    const next = path.join(prefix, 'Cellar', formula, '22.1.0');
+    const opt = path.join(prefix, 'opt', formula);
+    for (const version of [first, next]) {
+      fs.mkdirSync(path.join(version, 'bin'), { recursive: true });
+      fs.writeFileSync(path.join(version, 'bin/node'), '#!/bin/sh\nprintf runtime-ok\n', { mode: 0o700 });
+    }
+    fs.mkdirSync(path.dirname(opt), { recursive: true }); fs.symlinkSync(first, opt);
+    const executable = path.join(first, 'bin/node');
+    const launcherPath = nodeLauncherPath(executable);
+    assert.equal(launcherPath, path.join(opt, 'bin/node'));
+    fs.unlinkSync(opt); fs.symlinkSync(next, opt); fs.rmSync(first, { recursive: true });
+    assert.equal(execFileSync(launcherPath, [], { encoding: 'utf8' }), 'runtime-ok');
+    // Never substitute another formula/runtime, or a broken alias.
+    assert.equal(nodeLauncherPath(path.join(next, 'bin/node')), launcherPath);
+    fs.unlinkSync(opt); fs.symlinkSync(first, opt);
+    fs.mkdirSync(path.join(first, 'bin'), { recursive: true });
+    fs.writeFileSync(path.join(first, 'bin/node'), '#!/bin/sh\nexit 0\n', { mode: 0o700 });
+    assert.equal(nodeLauncherPath(path.join(next, 'bin/node')), path.join(next, 'bin/node'));
+    fs.rmSync(first, { recursive: true });
+    assert.equal(nodeLauncherPath(path.join(next, 'bin/node')), path.join(next, 'bin/node'));
+  }
+  assert.equal(nodeLauncherPath(process.execPath), nodeLauncherPath());
+  assert.equal(nodeLauncherPath('/custom/runtime/node'), '/custom/runtime/node');
+});
+
 test('source install and repeat preserve state, recovery settings and workspaces', t => {
   const f = fixture(t);
   const first = installSource(f);
+  assert(fs.readFileSync(path.join(first.runtime, 'native-host'), 'utf8').includes(`exec '${nodeLauncherPath()}'`));
   assert(fs.existsSync(first.workspace));
   const body = Buffer.from(JSON.stringify({ id: 1, method: 'handshake', params: { protocolVersion: 1, minimumProtocolVersion: 1, extensionVersion: '0.3.0' } }));
   const header = Buffer.alloc(4); header.writeUInt32LE(body.length);
