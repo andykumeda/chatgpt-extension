@@ -8,6 +8,7 @@ import { encode, decoder, MAX_FRAME } from '../bridge/framing.mjs';
 import { Store } from '../bridge/store.mjs';
 import { Bridge, pageReference } from '../bridge/service.mjs';
 import { CodexClient } from '../bridge/codex.mjs';
+import { openaiEndpoint } from '../bridge/config.mjs';
 
 function fixture(t) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'local-sidepanel-test-')));
@@ -80,6 +81,34 @@ test('native protocol handles split/coalesced frames and UTF-8', () => {
   decode(frame.subarray(0, 2)); decode(frame.subarray(2, 7)); decode(Buffer.concat([frame.subarray(7), encode({ id: 2 })]));
   assert.deepEqual(messages, [{ text: 'Test \u00e9 \ud83c\udf10' }, { id: 2 }]);
   assert.equal(errors.length, 0);
+});
+
+test('inference endpoint validation and explicit process override never modify inherited routing', async t => {
+  const { root, local } = fixture(t);
+  assert.equal(openaiEndpoint(undefined), undefined);
+  for (const invalid of [null, '', 'relative', 'file:///tmp/service', 'https://user:pass@example.test', 'https://example.test/?token=x', 'https://example.test/#x', ' https://example.test']) {
+    assert.throws(() => openaiEndpoint(invalid), /OpenAI endpoint/);
+    assert.throws(() => new Bridge({ state: local, openaiBaseUrl: invalid }, () => {}), /OpenAI endpoint/);
+  }
+  for (const endpoint of [undefined, 'https://inference.example.test/v1', 'http://127.0.0.1:11434/v1']) {
+    const client = new CodexClient({ binary: '/usr/bin/true', cwd: local, state: root, codexHome: local, scratch: local, openaiBaseUrl: endpoint });
+    assert.deepEqual(client.child.spawnargs.filter(arg => arg.startsWith('openai_base_url=')), endpoint ? [`openai_base_url=${JSON.stringify(endpoint)}`] : []);
+    await new Promise(resolve => client.child.once('exit', resolve));
+  }
+});
+
+test('hello reports the effective inference provider and origin without endpoint secrets', async t => {
+  const { local } = fixture(t);
+  for (const explicit of [false, true]) {
+    const bridge = new Bridge({ state: local, codexHome: local, ...(explicit ? { openaiBaseUrl: 'https://inference.example.test/v1' } : {}) }, () => {});
+    bridge.client = { request: async method => method === 'account/read' ? { requiresOpenaiAuth: false } : {
+      config: { model_provider: 'openai', openai_base_url: 'https://user:secret@inference.example.test/v1?key=private' },
+    } };
+    const hello = await bridge.handle('hello');
+    assert.deepEqual(hello.inference, { provider: 'openai', origin: 'https://inference.example.test', source: explicit ? 'bridge override' : 'inherited Codex configuration' });
+    assert(!JSON.stringify(hello).includes('secret'));
+    assert(!JSON.stringify(hello).includes('private'));
+  }
 });
 
 test('native framing rejects invalid JSON and oversized messages', () => {

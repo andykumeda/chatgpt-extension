@@ -2,9 +2,10 @@ import { spawn } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import readline from 'node:readline';
 import path from 'node:path';
+import { openaiEndpoint } from './config.mjs';
 
 export class CodexClient extends EventEmitter {
-  constructor({ binary, cwd, state, codexHome, scratch, toolHandler, modelCatalog }) {
+  constructor({ binary, cwd, state, codexHome, scratch, toolHandler, modelCatalog, openaiBaseUrl }) {
     super();
     this.pending = new Map();
     this.nextId = 1;
@@ -32,6 +33,7 @@ export class CodexClient extends EventEmitter {
     }
     const args = ['app-server', '--listen', 'stdio://'];
     if (modelCatalog !== undefined) overrides.model_catalog_json = modelCatalog;
+    if (openaiBaseUrl !== undefined) overrides.openai_base_url = openaiEndpoint(openaiBaseUrl);
     for (const [key, value] of Object.entries(overrides)) args.push('-c', `${key}=${JSON.stringify(value)}`);
     this.child = spawn(binary, args, {
       cwd, stdio: ['pipe', 'pipe', 'pipe'],

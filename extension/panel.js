@@ -155,6 +155,7 @@ function events(message) {
   if (message.event === 'activity') $('state').textContent = message.text;
   if (message.event === 'state') {
     setState(({ running: 'Running', completed: 'Completed', interrupted: 'Interrupted', error: 'Error' })[message.status] || message.status);
+    if (message.status === 'running') clearError();
     if (message.message) fail(message.message);
     if (!busy) { endBrowser(); refreshChats().catch(error => fail(error.message)); }
   }
@@ -212,6 +213,9 @@ async function connect() {
     const result = await request('hello');
     connected = true; authenticated = result.authenticated;
     $('connection').textContent = authenticated ? `Connected / ${result.authType || 'provider'}` : 'Sign-in required';
+    $('inference').textContent = result.inference
+      ? `Inference: ${result.inference.provider} / ${result.inference.origin} (${result.inference.source})`
+      : 'Inference service: inherited Codex configuration';
     $('workspace').value = result.workspace;
     if (!authenticated) fail('Run codex login in Terminal, finish Codex sign-in, then reconnect.');
     if (current) await resume(current.id); else setState('Ready');

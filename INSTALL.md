@@ -46,6 +46,16 @@ LOCAL_CODEX_MODEL_CATALOG=/absolute/local/path/models.json ./install.sh
 
 The installer saves this as `modelCatalog` in its private host configuration and preserves it across updates. The bridge passes it to the supported app-server `-c model_catalog_json` option. Missing files, directories, Documents/iCloud paths and unsafe symlinks fail clearly without falling back to the inherited catalog. Reconnect after installation. Use `LOCAL_CODEX_MODEL_CATALOG='' ./install.sh` to restore inherited catalog behavior. A catalog snapshot is static: refresh its model metadata when needed and verify actual model access. Never include account identity, authentication data or conversation content in a catalog, and never publish runtime catalogs with a release.
 
+If a message stays **Running** without text, inspect **App settings → Connection** for the effective inference provider and endpoint origin. Authentication and model discovery can succeed while inference is routed to an unavailable service. Codex response errors now appear beside the composer while it retries; Stop remains available. A recovered stream clears the warning. The bridge does not resubmit the turn or switch services.
+
+The side panel normally inherits Codex routing. A shared `openai_base_url` aimed at Ollama can redirect even a selected cloud model to that local endpoint. For an installation intended to use ChatGPT sign-in and cloud models, close all panels and explicitly configure its endpoint:
+
+```sh
+LOCAL_CODEX_OPENAI_BASE_URL=https://chatgpt.com/backend-api/codex ./install.sh
+```
+
+This stores `openaiBaseUrl` in the private host configuration and passes the supported `-c openai_base_url` override only to this bridge's Codex child. It does not edit shared Codex/Ollama settings, change the selected provider/model, or update credentials. This ChatGPT endpoint was verified with CLI 0.162.1 and GPT-6.1 Sol; API-key/custom-service installations must use their intended compatible endpoint instead. There is no automatic fallback if the endpoint is unavailable. The installer validates absolute HTTP(S) URLs and rejects credentials, queries and fragments before writing files. An explicit environment value takes precedence over the saved bridge value; updates preserve that saved value. `LOCAL_CODEX_OPENAI_BASE_URL='' ./install.sh` explicitly restores inherited routing. App settings displays only the effective origin, not credentials or URL queries. Existing panels must be closed and the extension reloaded to pick up the updated UI and bridge.
+
 ## ZIP installation
 
 Download the source ZIP and matching checksum from [GitHub Releases](https://github.com/andykumeda/chatgpt-extension/releases). Verify it with `shasum -a 256 -c <download-name>.sha256`, extract into a permanent folder under `~/Dev`, then run `./install.sh` there and load its `extension` directory.

@@ -175,6 +175,13 @@ try {
   await page.locator('#closeSettings').click();
   await page.locator('#prompt').fill('Click the ordinary test button'); await page.locator('#send').click();
   await page.waitForFunction(() => document.getElementById('state').textContent === 'Running');
+  await page.evaluate(() => window.nativeEvent({ event: 'state', chatId: 'test-chat', status: 'running', message: 'Codex is retrying. Check the network or use Stop.' }));
+  assert.equal(await page.locator('#error').isVisible(), true);
+  assert.match(await page.locator('#error').textContent(), /retrying/);
+  assert.equal(await page.locator('#stop').isVisible(), true);
+  assert.equal(await page.locator('#send').isDisabled(), true);
+  await page.evaluate(() => window.nativeEvent({ event: 'state', chatId: 'test-chat', status: 'running', message: null }));
+  assert.equal(await page.locator('#error').isVisible(), false);
   assert.equal(await page.evaluate(() => window.calls.filter(call => call.method === 'send').at(-1).params.allowBrowser), true);
   assert.equal(await page.evaluate(() => window.calls.filter(call => call.method === 'send').at(-1).params.allowEdits), false);
   await page.evaluate(() => window.nativeEvent({ event: 'browserRequest', chatId: 'test-chat', requestId: 'auto-action', operation: { operation: 'click', snapshot: 'browser-snapshot', ref: 'e1' } }));
@@ -225,5 +232,5 @@ try {
   await page.waitForFunction(() => !document.getElementById('model').disabled);
   assert.equal(await page.locator('#error').isVisible(), false);
   assert.deepEqual(errors, []);
-  console.log('Panel UI passed: no attachment label/page picker; streamed/resumed response copying and clipboard errors; session/permanent website preferences, opt-in action bypass, revocation and separate workspace edits; draft preserved without automatic send, fresh cross-site context, model/effort selection, 320–1440px layouts, restricted tabs allow chat without stale attachments, compatibility errors prevent startup/send, no page errors.');
+  console.log('Panel UI passed: no attachment label/page picker; streamed/resumed response copying and clipboard errors; response retry warnings keep Stop available and clear on recovery; session/permanent website preferences, opt-in action bypass, revocation and separate workspace edits; draft preserved without automatic send, fresh cross-site context, model/effort selection, 320–1440px layouts, restricted tabs allow chat without stale attachments, compatibility errors prevent startup/send, no page errors.');
 } finally { await browser?.close(); server.close(); }

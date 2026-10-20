@@ -4,6 +4,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { PathPolicy } from '../bridge/paths.mjs';
+import { openaiEndpoint } from '../bridge/config.mjs';
 
 export function nodeLauncherPath(executable = process.execPath) {
   // Node resolves Homebrew's symlink to a versioned Cellar path. Cleanup after
@@ -67,6 +68,8 @@ export function installSource({ project, home = os.homedir(), testing = false, e
   const runtimeState = requestedRuntime ? policy.safeFuture(requestedRuntime) : undefined;
   const requestedCatalog = Object.hasOwn(env, 'LOCAL_CODEX_MODEL_CATALOG') ? env.LOCAL_CODEX_MODEL_CATALOG : previous.modelCatalog;
   const modelCatalog = requestedCatalog === undefined || requestedCatalog === '' ? undefined : policy.file(requestedCatalog);
+  const requestedEndpoint = Object.hasOwn(env, 'LOCAL_CODEX_OPENAI_BASE_URL') ? env.LOCAL_CODEX_OPENAI_BASE_URL : previous.openaiBaseUrl;
+  const openaiBaseUrl = openaiEndpoint(requestedEndpoint === '' ? undefined : requestedEndpoint);
   assertHostIdle(previous.state || state); assertHostIdle(state);
   const indexPath = policy.safeFuture(path.join(state, 'chats.json'));
   const fresh = !fs.existsSync(indexPath);
@@ -83,7 +86,7 @@ export function installSource({ project, home = os.homedir(), testing = false, e
     fs.renameSync(temporary, file);
   };
   assertHostIdle(state);
-  atomic(configPath, JSON.stringify({ binary, codexHome, state, extensionId, runtimeState, modelCatalog }, null, 2), 0o600);
+  atomic(configPath, JSON.stringify({ binary, codexHome, state, extensionId, runtimeState, modelCatalog, openaiBaseUrl }, null, 2), 0o600);
   atomic(launcher, `#!/bin/sh\nexport LOCAL_CODEX_CONFIG=${quote(configPath)}\nexec ${quote(nodeLauncherPath())} ${quote(path.join(info.project, 'bridge/host.mjs'))} "$@"\n`, 0o700);
   atomic(hostPath, JSON.stringify({ name: 'com.local_codex.sidepanel', description: 'Local Codex source installation', path: launcher, type: 'stdio', allowed_origins: [`chrome-extension://${extensionId}/`] }, null, 2), 0o600);
   return { ...info, state, workspace };

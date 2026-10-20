@@ -94,6 +94,20 @@ test('source catalog override persists, can be cleared, and invalid files never 
   installSource({ ...f, env: { ...f.env, LOCAL_CODEX_MODEL_CATALOG: '' } });
   assert.equal(JSON.parse(fs.readFileSync(installed.configPath)).modelCatalog, undefined);
 });
+test('source endpoint override persists, validates before writes, and clears only explicitly', t => {
+  const setup = fixture(t);
+  const endpoint = 'https://inference.example.test/v1';
+  const installed = installSource({ ...setup, env: { ...setup.env, LOCAL_CODEX_OPENAI_BASE_URL: endpoint } });
+  installSource(setup);
+  assert.equal(JSON.parse(fs.readFileSync(installed.configPath)).openaiBaseUrl, endpoint);
+  const before = fs.readFileSync(installed.configPath);
+  for (const invalid of ['relative', 'file:///tmp/service', 'https://user:password@example.test/v1', 'https://example.test/v1?key=secret', 'https://example.test/#fragment']) {
+    assert.throws(() => installSource({ ...setup, env: { ...setup.env, LOCAL_CODEX_OPENAI_BASE_URL: invalid } }), /OpenAI endpoint/);
+    assert.deepEqual(fs.readFileSync(installed.configPath), before);
+  }
+  installSource({ ...setup, env: { ...setup.env, LOCAL_CODEX_OPENAI_BASE_URL: '' } });
+  assert.equal(JSON.parse(fs.readFileSync(installed.configPath)).openaiBaseUrl, undefined);
+});
 test('source install migrates known registration across folders and rejects unknown hosts before writes', t => {
   const f = fixture(t); const installed = installSource(f);
   const other = path.join(f.home, 'Dev/new-copy'); fs.cpSync(f.project, other, { recursive: true, filter: file => path.basename(file) !== '.runtime' });
