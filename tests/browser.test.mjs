@@ -84,3 +84,18 @@ test('bridge browser grant is scoped to the active thread/turn and stop revokes 
   assert.equal(bridge.active.allowBrowser, false);
   assert.equal(bridge.browser.pending.size, 0);
 });
+
+test('live browser enable reads a still-loading page without waiting for document idle', async () => {
+  const { api } = fixture();
+  const execute = api.scripting.executeScript;
+  api.scripting.executeScript = args => args.injectImmediately ? execute(args) : new Promise(() => {});
+  const browser = new LiveBrowser(api);
+  let timer;
+  try {
+    await Promise.race([
+      browser.enable({ id: 42, url: 'https://example.com/page' }),
+      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Live browser stuck waiting for page load')), 100); }),
+    ]);
+    assert.equal(browser.target.last.documentId, 'document-1');
+  } finally { clearTimeout(timer); browser.disable(); }
+});

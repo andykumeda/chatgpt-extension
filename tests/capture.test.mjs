@@ -32,3 +32,18 @@ test('website capture failures and missing results remain errors; ordinary pages
   await assert.rejects(captureActivePage(fixture('https://example.com', 'Access denied').api), /Access denied/);
   api.scripting.executeScript = async () => []; await assert.rejects(captureActivePage(api), /no page content/);
 });
+
+test('page capture does not wait for document idle on a still-loading website', async () => {
+  const { api } = fixture('https://example.com');
+  api.scripting.executeScript = args => args.injectImmediately
+    ? Promise.resolve([{ result: { url: 'https://example.com', text: 'Current DOM' } }])
+    : new Promise(() => {}); // Chrome's default waits for document idle.
+  let timer;
+  try {
+    const result = await Promise.race([
+      captureActivePage(api),
+      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Capture stuck waiting for page load')), 100); }),
+    ]);
+    assert.equal(result.text, 'Current DOM');
+  } finally { clearTimeout(timer); }
+});

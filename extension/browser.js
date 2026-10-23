@@ -60,7 +60,7 @@ export class LiveBrowser {
     }
     if (this.target !== target) throw new Error('Browser access was revoked.');
     const injectionTarget = operation.operation === 'read' ? { tabId: target.tabId, frameIds: [0] } : { tabId: target.tabId, documentIds: [last.documentId] };
-    const [reply] = await this.api.scripting.executeScript({ target: injectionTarget, world: 'ISOLATED', func: browserDOM, args: [operation] });
+    const [reply] = await this.api.scripting.executeScript({ target: injectionTarget, world: 'ISOLATED', injectImmediately: true, func: browserDOM, args: [operation] });
     if (!reply?.result) throw new Error('The page is unavailable or changed before execution. No automatic retry.');
     if (operation.operation === 'read') {
       const actual = browserURL(reply.result.url);

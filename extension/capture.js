@@ -26,7 +26,8 @@ export async function captureActivePage(api = chrome) {
   if (restrictedPage(tab.url)) return null;
   let frames;
   try {
-    frames = await api.scripting.executeScript({ target: { tabId: tab.id }, func: capturePage });
+    // Capture the current DOM even when a site keeps its load event pending.
+    frames = await api.scripting.executeScript({ target: { tabId: tab.id }, func: capturePage, injectImmediately: true });
   } catch (error) {
     // Chrome can withhold tab.url even though its scripting error identifies a restricted page.
     if (/Cannot access a chrome:\/\/ URL|Cannot access contents of url ["'](?:chrome|chrome-extension|chrome-search|about):|extensions gallery cannot be scripted/i.test(error.message)) return null;

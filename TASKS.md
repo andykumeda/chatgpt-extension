@@ -1,5 +1,13 @@
 # Task Ledger
 
+## Still-loading website capture fix — 2026-10-23
+
+State: Verified in regression tests; Deployed to the Mini unpacked source extension by Chrome Reload. Acceptance: capture and live-browser setup must not wait for document idle before sending. The affected site reproduced Starting with an empty conversation, an intact unsent draft, connected authentication and Page context stuck at Checking current page. Navigating away released the pending call with a removed-frame error. Both scripting entry points used Chrome's default document-idle injection timing.
+
+Changed `extension/capture.js` and `extension/browser.js` to request immediate isolated-world injection against the current DOM. Kept website permissions, document identity, approval and origin validation unchanged. Tests in `tests/capture.test.mjs` and `tests/browser.test.mjs` simulate injection pending until idle; each failed before its fix and passed afterward. Focused tests: 11/11 pass. Full npm test: 57/57 pass. npm run check and git diff --check pass. README documents partial-load snapshot semantics.
+
+Live verification: after the capture fix and extension reload, the affected website's Page context displayed its title and URL instead of Checking current page. A harmless marker prompt sent from the county tab eventually reached Completed, exposing the same default injection wait in live-browser setup before the second fix. Reloaded the complete two-path repair successfully in Chrome. Final repeat of the original user message remains pending because Chrome was actively being used during verification. The original draft was not submitted; extension reload clears unsent drafts. No provider/configuration/permissions/database changes, public release or remote-Mac deployment. Diagnostic marker chat retained in local history.
+
 ## Mini Starting investigation — 2026-10-23
 
 State: In progress; reported hang not reproduced. Acceptance: reproduce the Mini's persistent Starting state and verify recovery on the affected website/chat. Current checkout and installed source bridge are e561f33. No source, provider, runtime, workspace, registration or permission changes made; unrelated untracked .DS_Store preserved.
