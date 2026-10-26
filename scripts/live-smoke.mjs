@@ -7,7 +7,7 @@ import { PathPolicy } from '../bridge/paths.mjs';
 const policy = new PathPolicy();
 const state = policy.create(path.join(process.cwd(), '.runtime/live-smoke'));
 const workspace = policy.create(path.join(state, 'workspace'));
-const config = { binary: process.env.CODEX_BINARY || '/opt/homebrew/bin/codex', state };
+const config = { binary: process.env.CODEX_BINARY || '/opt/homebrew/bin/codex', state, sqliteHome: policy.create(path.join(state, 'sqlite')) };
 let deltas = 0, completed;
 const events = message => {
   if (message.event === 'delta') deltas++;

@@ -1,5 +1,15 @@
 # Task Ledger
 
+## Codex sidebar history integration — 2026-10-26
+
+State: Deployed locally (source bridge), verified. Owner: Codex. Acceptance: new extension chats share desktop history; existing IDs, workspaces and user messages survive registration; isolated test history remains explicitly configurable.
+
+Changes: removed the forced private SQLite default; inherit Codex's configured history location. Preserve private extension cache/logs/scratch and existing databases. Optional validated `sqliteHome` / `LOCAL_CODEX_SQLITE_HOME` remains available for isolation and survives source updates. Publish the extension title through `thread/name/set` before inference; resume restores missing titles from isolated history while preserving existing desktop names. Regression coverage includes failed naming/retry, no inference on metadata failure, path validation, and installer index preservation. Existing smoke fixtures explicitly retain isolated SQLite.
+
+Verification: 61/61 tests, syntax/manifest and whitespace checks pass. Real CLI 0.164.0 synthetic new-chat response and full restart from isolated to shared history with marker recall pass; both IDs appear in the desktop app's chat/sidebar listing. The first live run's final model response timed out; a fresh full repeat passed without changing provider/endpoint. After the user closed panels, the installed native launcher passed handshake/authentication and processed all 26 existing chat IDs. All 26 are now indexed in the desktop database; original IDs, workspaces and user messages were checked unchanged against a private backup. Eighteen resumed successfully; eight could be read/indexed but could not resume because their saved `caveman` provider is no longer configured. Provider routing was not changed. No database rows were manually edited and no original prompt was replayed.
+
+Delivery: installed source launcher uses this checkout; next panel connection loads the change. No public packaged release or remote-Mac deployment. Physical Chrome-panel reopening is pending user confirmation; live native transport and desktop listing were checked. Avoid simultaneous turns on the same chat from desktop and extension; browser tools require the extension. Old provider recovery remains separate from history visibility.
+
 ## Still-loading website capture fix — 2026-10-23
 
 State: Verified in regression tests; Deployed to the Mini unpacked source extension by Chrome Reload. Acceptance: capture and live-browser setup must not wait for document idle before sending. The affected site reproduced Starting with an empty conversation, an intact unsent draft, connected authentication and Page context stuck at Checking current page. Navigating away released the pending call with a removed-frame error. Both scripting entry points used Chrome's default document-idle injection timing.

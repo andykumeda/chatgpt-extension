@@ -11,7 +11,7 @@ const state = policy.create(path.join(cwd, '.runtime/probe'));
 const workspace = policy.create(path.join(state, 'workspace'));
 const scratch = policy.create(path.join(workspace, '.tmp'));
 const codexHome = policy.directory(process.env.CODEX_HOME || path.join(os.homedir(), '.codex'));
-const client = new CodexClient({ binary: process.env.CODEX_BINARY || '/opt/homebrew/bin/codex', cwd: workspace, state, codexHome, scratch });
+const client = new CodexClient({ binary: process.env.CODEX_BINARY || '/opt/homebrew/bin/codex', cwd: workspace, state, codexHome, scratch, sqliteHome: policy.create(path.join(state, 'sqlite')) });
 try {
   const initialized = await client.initialize();
   console.log('Initialized:', initialized.userAgent);

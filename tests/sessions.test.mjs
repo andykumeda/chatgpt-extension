@@ -16,6 +16,7 @@ test('panel sessions share one index, run separate chats, isolate tools and stop
   const calls = [];
   const client = { request: async (method, params) => {
     calls.push({ method, params });
+    if (method === 'thread/name/set') return {};
     if (method === 'turn/start') return { turn: { id: `turn-${params.threadId}` } };
     if (method === 'turn/interrupt') return {};
     assert.fail(`Unexpected method: ${method}`);
@@ -25,6 +26,7 @@ test('panel sessions share one index, run separate chats, isolate tools and stop
   assert.equal(a.store, b.store); assert.equal(a.loaded, b.loaded);
   await handle('panel-a', 'send', { id: 'chat-a', text: 'A', allowBrowser: true });
   await handle('panel-b', 'send', { id: 'chat-b', text: 'B' });
+  assert.deepEqual(calls.filter(call => call.method === 'thread/name/set').map(call => call.params), [{ threadId: 'chat-a', name: 'A' }, { threadId: 'chat-b', name: 'B' }]);
   await assert.rejects(handle('panel-b', 'resume', { id: 'chat-a' }), /already running/);
   const cHandshake = await handle('panel-c', 'handshake', { protocolVersion: 1, minimumProtocolVersion: 1, extensionVersion: '0.3.3' }); assert.equal(cHandshake.protocolVersion, 1);
   await assert.rejects(handle('panel-c', 'resume', { id: 'chat-a' }), /another panel/);

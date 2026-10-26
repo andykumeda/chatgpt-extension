@@ -5,12 +5,12 @@ import path from 'node:path';
 import { openaiEndpoint } from './config.mjs';
 
 export class CodexClient extends EventEmitter {
-  constructor({ binary, cwd, state, codexHome, scratch, toolHandler, modelCatalog, openaiBaseUrl }) {
+  constructor({ binary, cwd, state, codexHome, scratch, toolHandler, modelCatalog, openaiBaseUrl, sqliteHome }) {
     super();
     this.pending = new Map();
     this.nextId = 1;
     const overrides = {
-      sqlite_home: path.join(state, 'sqlite'), log_dir: path.join(state, 'logs'),
+      log_dir: path.join(state, 'logs'),
       approval_policy: 'never', sandbox_mode: 'workspace-write',
       'sandbox_workspace_write.writable_roots': [],
       'sandbox_workspace_write.network_access': false,
@@ -32,12 +32,13 @@ export class CodexClient extends EventEmitter {
       overrides[`shell_environment_policy.set.${key}`] = value;
     }
     const args = ['app-server', '--listen', 'stdio://'];
+    if (sqliteHome !== undefined) overrides.sqlite_home = sqliteHome;
     if (modelCatalog !== undefined) overrides.model_catalog_json = modelCatalog;
     if (openaiBaseUrl !== undefined) overrides.openai_base_url = openaiEndpoint(openaiBaseUrl);
     for (const [key, value] of Object.entries(overrides)) args.push('-c', `${key}=${JSON.stringify(value)}`);
     this.child = spawn(binary, args, {
       cwd, stdio: ['pipe', 'pipe', 'pipe'],
-      env: { ...process.env, CODEX_HOME: codexHome, CODEX_SQLITE_HOME: path.join(state, 'sqlite'), TMPDIR: scratch, RUST_LOG: 'off' },
+      env: { ...process.env, CODEX_HOME: codexHome, ...(sqliteHome === undefined ? {} : { CODEX_SQLITE_HOME: sqliteHome }), TMPDIR: scratch, RUST_LOG: 'off' },
     });
     // Never forward raw child stderr, config, account records, or protocol payloads to logs/UI.
     this.child.stderr.resume();

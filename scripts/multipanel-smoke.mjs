@@ -11,7 +11,7 @@ const root = policy.create(path.join(process.cwd(), '.runtime/multipanel-smoke')
 const workspaces = ['a', 'b'].map(name => policy.create(path.join(root, `workspace-${name}`)));
 const configPath = policy.safeFuture(path.join(root, 'host-config.json'));
 const installed = JSON.parse(fs.readFileSync('.runtime/host-config.json', 'utf8'));
-const config = { binary: installed.binary, codexHome: installed.codexHome, extensionId: installed.extensionId, state: root };
+const config = { binary: installed.binary, codexHome: installed.codexHome, extensionId: installed.extensionId, state: root, sqliteHome: policy.create(path.join(root, 'sqlite')) };
 fs.writeFileSync(configPath, JSON.stringify(config), { mode: 0o600 });
 let child, nextId = 0;
 const pending = new Map(); const states = new Map(); const deltas = new Map();

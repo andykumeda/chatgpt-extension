@@ -11,7 +11,7 @@ const state = policy.create(path.join(process.cwd(), '.runtime/browser-compat'))
 const workspace = policy.create(path.join(state, 'workspace'));
 const config = {
   binary: execFileSync('which', ['codex'], { encoding: 'utf8' }).trim(), cwd: workspace,
-  state, codexHome: policy.directory(path.join(os.homedir(), '.codex')), scratch: policy.create(path.join(state, 'tmp')),
+  state, sqliteHome: policy.create(path.join(state, 'sqlite')), codexHome: policy.directory(path.join(os.homedir(), '.codex')), scratch: policy.create(path.join(state, 'tmp')),
 };
 let calls = 0;
 const tools = [{ type: 'function', name: 'local_browser_probe', description: 'Read a synthetic browser fixture marker for the compatibility test.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } }];

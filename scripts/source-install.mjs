@@ -66,6 +66,8 @@ export function installSource({ project, home = os.homedir(), testing = false, e
   const state = policy.safeFuture(env.LOCAL_CODEX_STATE || previous.state || (testing ? path.join(project, '.runtime/browser-state') : path.join(home, '.codex/local-sidepanel')));
   const requestedRuntime = env.LOCAL_CODEX_RUNTIME_STATE || previous.runtimeState;
   const runtimeState = requestedRuntime ? policy.safeFuture(requestedRuntime) : undefined;
+  const requestedSqlite = Object.hasOwn(env, 'LOCAL_CODEX_SQLITE_HOME') ? env.LOCAL_CODEX_SQLITE_HOME : previous.sqliteHome;
+  const sqliteHome = requestedSqlite === undefined || requestedSqlite === '' ? undefined : policy.safeFuture(requestedSqlite);
   const requestedCatalog = Object.hasOwn(env, 'LOCAL_CODEX_MODEL_CATALOG') ? env.LOCAL_CODEX_MODEL_CATALOG : previous.modelCatalog;
   const modelCatalog = requestedCatalog === undefined || requestedCatalog === '' ? undefined : policy.file(requestedCatalog);
   const requestedEndpoint = Object.hasOwn(env, 'LOCAL_CODEX_OPENAI_BASE_URL') ? env.LOCAL_CODEX_OPENAI_BASE_URL : previous.openaiBaseUrl;
@@ -78,7 +80,7 @@ export function installSource({ project, home = os.homedir(), testing = false, e
   const workspace = fresh ? policy.safeFuture(path.join(home, '.codex/Codex')) : policy.directory(index.workspace);
   const launcher = policy.safeFuture(path.join(runtime, 'native-host'));
   for (const file of [configPath, hostPath]) policy.safeFuture(file);
-  for (const directory of [runtime, hostRoot, codexHome, state, runtimeState, ...(fresh ? [workspace] : [])].filter(Boolean)) policy.create(directory);
+  for (const directory of [runtime, hostRoot, codexHome, state, runtimeState, sqliteHome, ...(fresh ? [workspace] : [])].filter(Boolean)) policy.create(directory);
   const quote = value => `'${value.replaceAll("'", "'\\''")}'`;
   const atomic = (file, contents, mode) => {
     const temporary = `${file}.${process.pid}.tmp`;
@@ -86,7 +88,7 @@ export function installSource({ project, home = os.homedir(), testing = false, e
     fs.renameSync(temporary, file);
   };
   assertHostIdle(state);
-  atomic(configPath, JSON.stringify({ binary, codexHome, state, extensionId, runtimeState, modelCatalog, openaiBaseUrl }, null, 2), 0o600);
+  atomic(configPath, JSON.stringify({ binary, codexHome, state, extensionId, runtimeState, sqliteHome, modelCatalog, openaiBaseUrl }, null, 2), 0o600);
   atomic(launcher, `#!/bin/sh\nexport LOCAL_CODEX_CONFIG=${quote(configPath)}\nexec ${quote(nodeLauncherPath())} ${quote(path.join(info.project, 'bridge/host.mjs'))} "$@"\n`, 0o700);
   atomic(hostPath, JSON.stringify({ name: 'com.local_codex.sidepanel', description: 'Local Codex source installation', path: launcher, type: 'stdio', allowed_origins: [`chrome-extension://${extensionId}/`] }, null, 2), 0o600);
   return { ...info, state, workspace };

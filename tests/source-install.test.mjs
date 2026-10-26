@@ -18,6 +18,20 @@ function fixture(t) {
   const env = { ...process.env, HOME: home, CODEX_BINARY: binary };
   return { home, project, env };
 }
+test('history override survives updates, can be cleared, and never replaces the extension index', t => {
+  const f = fixture(t);
+  const sqliteHome = path.join(f.home, 'isolated-history');
+  const first = installSource({ ...f, env: { ...f.env, LOCAL_CODEX_SQLITE_HOME: sqliteHome } });
+  const indexPath = path.join(first.state, 'chats.json');
+  const index = JSON.stringify({ version: 1, workspace: first.workspace, chats: [{ id: 'existing' }] });
+  fs.writeFileSync(indexPath, index);
+  installSource(f);
+  assert.equal(JSON.parse(fs.readFileSync(first.configPath)).sqliteHome, sqliteHome);
+  installSource({ ...f, env: { ...f.env, LOCAL_CODEX_SQLITE_HOME: '' } });
+  assert.equal(JSON.parse(fs.readFileSync(first.configPath)).sqliteHome, undefined);
+  assert.equal(fs.readFileSync(indexPath, 'utf8'), index);
+  assert.throws(() => installSource({ ...f, env: { ...f.env, LOCAL_CODEX_SQLITE_HOME: 'relative' } }), /absolute/);
+});
 test('Homebrew launcher survives a Node upgrade and removal of the old Cellar version', t => {
   const f = fixture(t);
   for (const formula of ['node', 'node@22']) {

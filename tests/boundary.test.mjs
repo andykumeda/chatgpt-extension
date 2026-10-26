@@ -83,6 +83,22 @@ test('native protocol handles split/coalesced frames and UTF-8', () => {
   assert.equal(errors.length, 0);
 });
 
+test('desktop history is inherited by default; explicit isolated history is validated and passed to Codex', async t => {
+  const { root, home, local } = fixture(t);
+  const options = { binary: '/usr/bin/true', cwd: local, state: root, codexHome: local, scratch: local };
+  for (const sqliteHome of [undefined, path.join(root, 'isolated')]) {
+    const bridge = new Bridge({ state: root, sqliteHome }, () => {});
+    assert.equal(bridge.sqliteHome, sqliteHome);
+    const client = new CodexClient({ ...options, sqliteHome: bridge.sqliteHome });
+    assert.deepEqual(client.child.spawnargs.filter(arg => arg.startsWith('sqlite_home=')), sqliteHome ? [`sqlite_home=${JSON.stringify(sqliteHome)}`] : []);
+    await new Promise(resolve => client.child.once('exit', resolve));
+  }
+  for (const sqliteHome of ['', null, 'relative', path.join(os.homedir(), 'Documents/history')]) {
+    assert.throws(() => new Bridge({ state: root, sqliteHome }, () => {}));
+  }
+  assert.equal(fs.existsSync(path.join(root, 'sqlite')), false);
+});
+
 test('inference endpoint validation and explicit process override never modify inherited routing', async t => {
   const { root, local } = fixture(t);
   assert.equal(openaiEndpoint(undefined), undefined);
@@ -187,12 +203,59 @@ test('invalid saved defaults fail without replacement and can be repaired withou
   assert.equal(bridge.client, null);
 });
 
+test('sidebar naming retries failed metadata writes, never starts a turn on failure, and preserves later desktop renames', async t => {
+  const { root, local } = fixture(t);
+  const bridge = new Bridge({ state: root }, () => {});
+  bridge.loaded.add('owned');
+  bridge.store.data.chats.push({ id: 'owned', title: 'New chat', workspace: local, messages: [], status: 'idle' });
+  let names = 0, turns = 0;
+  bridge.client = { request: async (method, params) => {
+    if (method === 'thread/name/set') {
+      assert.deepEqual(params, { threadId: 'owned', name: 'My page question' });
+      if (++names === 1) throw new Error('Metadata unavailable');
+      return {};
+    }
+    assert.equal(method, 'turn/start');
+    return { turn: { id: `turn-${++turns}` } };
+  } };
+  await assert.rejects(bridge.handle('send', { id: 'owned', text: 'My page question' }), /Metadata unavailable/);
+  assert.equal(turns, 0);
+  assert.equal(bridge.store.get('owned').historyNamed, undefined);
+  await bridge.handle('send', { id: 'owned', text: 'My page question' });
+  assert.equal(JSON.parse(fs.readFileSync(bridge.store.file)).chats[0].historyNamed, true);
+  bridge.notification({ method: 'turn/completed', params: { threadId: 'owned', turn: { id: 'turn-1', status: 'completed' } } });
+  await bridge.handle('send', { id: 'owned', text: 'Follow up after renaming in desktop' });
+  assert.equal(names, 2);
+  assert.equal(turns, 2);
+});
+
+test('resuming isolated history registers its title but keeps an existing desktop title', async t => {
+  const { root, local } = fixture(t);
+  for (const name of [null, 'Desktop title']) {
+    const bridge = new Bridge({ state: root }, () => {});
+    const chat = { id: 'owned', title: 'Extension title', workspace: local, messages: [{ role: 'user', text: 'Question' }], historyNamed: true };
+    bridge.store.data.chats = [chat];
+    const names = [];
+    bridge.client = { request: async (method, params) => {
+      if (method === 'thread/name/set') { names.push(params.name); return {}; }
+      assert(['thread/read', 'thread/resume'].includes(method));
+      return { thread: { cwd: local, name, turns: [] } };
+    } };
+    bridge.connect = async () => bridge.client;
+    bridge.threadOptions = async () => ({});
+    await bridge.handle('resume', { id: 'owned' });
+    assert.deepEqual(names, name ? [] : ['Extension title']);
+    assert.equal(chat.historyNamed, true);
+  }
+});
+
 test('model catalog filters hidden models, paginates, and selected model/effort reach turn/start', async t => {
   const { root, local, policy } = fixture(t);
   const bridge = new Bridge({ state: policy.create(path.join(root, 'state')) }, () => {});
   const visible = { model: 'test-model', displayName: 'Test model', isDefault: true, defaultReasoningEffort: 'medium', supportedReasoningEfforts: [{ reasoningEffort: 'medium' }, { reasoningEffort: 'high' }] };
   let started;
   bridge.client = { request: async (method, params) => {
+    if (method === 'thread/name/set') return {};
     if (method === 'model/list') return params.cursor ? { data: [visible] } : { data: [{ ...visible, hidden: true }], nextCursor: 'next' };
     if (method === 'turn/start') { started = params; return { turn: { id: 'turn' } }; }
     assert.fail(`Unexpected method ${method}`);
