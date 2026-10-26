@@ -28,6 +28,7 @@ const pending = new Map();
 let assistantBody = null, itemId = null;
 const browser = new LiveBrowser();
 let browserApproval = null, startupError = null, models = [];
+let historyMarks = [], matchIndex = -1, searchVersion = 0, searchedQuery = '', searchOffset = null;
 function endBrowser() {
   browser.disable();
   browserApproval?.resolve(false); browserApproval = null;
@@ -59,7 +60,10 @@ $('approveBrowser').addEventListener('click', async () => {
 function fail(message) { $('error').textContent = message; $('error').hidden = false; }
 function clearError() { $('error').hidden = true; }
 function controls() {
-  $('send').disabled = !connected || !authenticated || busy || !models.length;
+  $('send').disabled = !connected || !authenticated || busy || !models.length || current?.readOnly === true;
+  $('openSearch').disabled = !compatible || busy;
+  $('historyPreview').hidden = !current?.readOnly;
+  $('continueChat').disabled = busy || !connected || !authenticated;
   $('stop').hidden = !busy;
   $('chats').disabled = busy;
   $('newChat').disabled = busy || !connected;
@@ -85,6 +89,9 @@ function request(method, params = {}) {
   });
 }
 function resetMessages() {
+  historyMarks = []; matchIndex = -1;
+  $('matchStatus').textContent = 'Saved conversation';
+  $('previousMatch').disabled = $('nextMatch').disabled = true;
   $('messages').replaceChildren();
   const empty = document.createElement('div'); empty.id = 'empty'; empty.setAttribute('aria-label', 'Start a conversation');
   const mark = document.createElement('img'); mark.className = 'brand-mark'; mark.src = 'icon-128.png'; mark.alt = '';
@@ -93,7 +100,7 @@ function resetMessages() {
 function appendMessage(role, text) {
   $('empty')?.remove();
   const article = document.createElement('article'); article.className = `message ${role}`;
-  const label = document.createElement('div'); label.className = 'role'; label.textContent = role === 'assistant' ? 'Codex' : 'You';
+  const label = document.createElement('div'); label.className = 'role'; label.textContent = role === 'reference' ? 'Page context' : role === 'assistant' ? 'Codex' : 'You';
   const body = document.createElement('div'); body.className = 'body'; body.textContent = text;
   article.append(label, body);
   if (role === 'assistant') {
@@ -119,6 +126,65 @@ async function refreshChats() {
   for (const chat of chats) $('chats').append(new Option(chat.title, chat.id));
   $('chats').value = current?.id || '';
 }
+function highlight(text, query) {
+  const fragment = document.createDocumentFragment();
+  let start = 0;
+  if (query) for (const match of text.matchAll(new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'giu'))) {
+    fragment.append(document.createTextNode(text.slice(start, match.index)));
+    const mark = document.createElement('mark'); mark.textContent = match[0]; fragment.append(mark);
+    start = match.index + match[0].length;
+  }
+  fragment.append(document.createTextNode(text.slice(start)));
+  return fragment;
+}
+function moveMatch(direction) {
+  $('previousMatch').disabled = $('nextMatch').disabled = !historyMarks.length;
+  if (!historyMarks.length) { $('matchStatus').textContent = 'Saved preview · title match'; return; }
+  historyMarks[matchIndex]?.classList.remove('current-match');
+  matchIndex = (matchIndex + direction + historyMarks.length) % historyMarks.length;
+  historyMarks[matchIndex].classList.add('current-match');
+  historyMarks[matchIndex].scrollIntoView({ block: 'center' });
+  $('matchStatus').textContent = `Saved preview · ${matchIndex + 1} of ${historyMarks.length} matches`;
+}
+async function searchChats(offset = 0) {
+  const query = offset ? searchedQuery : $('searchQuery').value.trim();
+  const version = ++searchVersion;
+  if (!offset) { $('searchResults').replaceChildren(); $('moreResults').hidden = true; }
+  if (!query) { $('searchStatus').textContent = 'Enter a word or phrase.'; $('runSearch').disabled = $('moreResults').disabled = false; return; }
+  $('runSearch').disabled = $('moreResults').disabled = true;
+  $('searchStatus').textContent = 'Searching…';
+  try {
+    const result = await request('search', { query, offset });
+    if (version !== searchVersion) return;
+    searchedQuery = query; searchOffset = result.nextOffset;
+    for (const chat of result.results) {
+      const button = document.createElement('button'); button.className = 'search-result'; button.type = 'button';
+      const title = document.createElement('strong'); title.append(highlight(chat.title, query));
+      const snippet = document.createElement('span'); snippet.append(document.createTextNode(`${chat.source}: `), highlight(chat.snippet, query));
+      button.append(title, snippet);
+      button.addEventListener('click', async () => {
+        $('searchDialog').close();
+        if (!await resume(chat.id, 'view')) return;
+        if (![...$('chats').options].some(option => option.value === chat.id)) $('chats').append(new Option(chat.title, chat.id));
+        $('chats').value = chat.id;
+        for (const body of $('messages').querySelectorAll('.body')) body.replaceChildren(highlight(body.textContent, query));
+        historyMarks = [...$('messages').querySelectorAll('mark')]; matchIndex = -1; moveMatch(1);
+      });
+      $('searchResults').append(button);
+    }
+    $('searchStatus').textContent = `${result.total} ${result.total === 1 ? 'chat' : 'chats'} matching “${query}” · ${$('searchResults').children.length} shown`;
+    $('moreResults').hidden = searchOffset === null;
+  } catch (error) { if (version === searchVersion) $('searchStatus').textContent = error.message; }
+  finally { if (version === searchVersion) $('runSearch').disabled = $('moreResults').disabled = false; }
+}
+$('openSearch').addEventListener('click', () => { closeMenu(); $('searchDialog').showModal(); $('searchQuery').focus(); });
+$('closeSearch').addEventListener('click', () => $('searchDialog').close());
+$('searchDialog').addEventListener('close', () => { searchVersion++; $('runSearch').disabled = $('moreResults').disabled = false; });
+$('searchForm').addEventListener('submit', event => { event.preventDefault(); void searchChats(); });
+$('moreResults').addEventListener('click', () => { if (searchOffset !== null) void searchChats(searchOffset); });
+$('previousMatch').addEventListener('click', () => moveMatch(-1));
+$('nextMatch').addEventListener('click', () => moveMatch(1));
+$('continueChat').addEventListener('click', () => { if (current) void resume(current.id); });
 function events(message) {
   if (message.event === 'fatal') { startupError = message.message; fail(message.message); return; }
   if (message.event === 'browserRequest') {
@@ -218,7 +284,7 @@ async function connect() {
       : 'Inference service: inherited Codex configuration';
     $('workspace').value = result.workspace;
     if (!authenticated) fail('Run codex login in Terminal, finish Codex sign-in, then reconnect.');
-    if (current) await resume(current.id); else setState('Ready');
+    if (current) await resume(current.id, current.readOnly ? 'view' : 'resume'); else setState('Ready');
     await refreshChats();
     const catalog = await request('models'); models = catalog.models;
     $('model').replaceChildren(...models.map(model => new Option(model.displayName, model.model)));
@@ -233,14 +299,20 @@ async function connect() {
   }
   finally { connecting = false; controls(); }
 }
-async function resume(id) {
+async function resume(id, method = 'resume') {
+  const previous = current;
   clearError(); setState('Starting');
   try {
-    const result = await request('resume', { id }); current = result.chat;
+    const result = await request(method, { id }); current = result.chat;
     $('chatWorkspace').textContent = `Chat workspace: ${current.workspace}`;
     $('allowEdits').checked = false;
-    setState(current.status === 'interrupted' ? 'Interrupted' : 'Ready');
-  } catch (error) { current = null; resetMessages(); setState('Error'); fail(error.message); }
+    setState(current.readOnly ? 'Saved preview' : current.status === 'interrupted' ? 'Interrupted' : 'Ready');
+    return true;
+  } catch (error) {
+    if (previous?.readOnly) current = previous;
+    else { current = null; resetMessages(); }
+    setState('Error'); fail(error.message); return false;
+  }
 }
 $('connect').addEventListener('click', connect);
 $('workspaceForm').addEventListener('submit', async event => {
@@ -345,7 +417,7 @@ chrome.tabs.onActivated.addListener(() => { if (!busy) captureCurrentPage().catc
 chrome.tabs.onUpdated.addListener((_id, change, tab) => { if (tab.active && change.status === 'complete' && !busy) captureCurrentPage().catch(() => {}); });
 window.addEventListener('focus', () => { if (!busy) captureCurrentPage().catch(() => {}); });
 $('sendForm').addEventListener('submit', async event => {
-  event.preventDefault(); if (busy || !connected || !authenticated) return;
+  event.preventDefault(); if (busy || !connected || !authenticated || current?.readOnly) return;
   const text = $('prompt').value.trim(); if (!text) return;
   clearError(); setState('Starting');
   try {

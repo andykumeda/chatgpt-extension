@@ -9,6 +9,7 @@
 <body>
   <div class="chat-shell">
     <nav class="chat-header" aria-label="Chat navigation">
+      <button id="openSearch" aria-label="Search saved chats" disabled>Search</button>
       <select id="chats" aria-label="Saved chats"><option value="">New chat</option></select>
       <button id="menuButton" class="icon-button" aria-label="Open menu" aria-expanded="false" aria-controls="appMenu">•••</button>
       <div id="appMenu" class="menu" hidden>
@@ -18,6 +19,11 @@
       </div>
     </nav>
     <div id="error" role="alert" hidden></div>
+    <div id="historyPreview" hidden>
+      <span id="matchStatus" role="status">Saved conversation</span>
+      <button id="previousMatch" aria-label="Previous match">↑</button><button id="nextMatch" aria-label="Next match">↓</button>
+      <button id="continueChat">Continue chat</button>
+    </div>
     <main id="messages" aria-label="Conversation" aria-live="polite"><div id="empty" aria-label="Start a conversation"><img class="brand-mark" src="icon-128.png" alt=""></div></main>
     <footer>
       <section id="browserApproval" aria-label="Browser action approval" hidden>
@@ -34,6 +40,14 @@
       <div id="state" role="status" class="status">Ready</div>
     </footer>
   </div>
+  <dialog id="searchDialog" aria-labelledby="searchTitle">
+    <div class="settings-heading"><h1 id="searchTitle">Search chats</h1><button id="closeSearch" class="icon-button" aria-label="Close search">×</button></div>
+    <p class="help">Search all saved extension chats: titles, messages, and captured page text. Case-insensitive phrase matching. Search stays on this Mac.</p>
+    <form id="searchForm" class="row"><input id="searchQuery" type="search" aria-label="Search conversation contents" placeholder="Words or phrase" maxlength="500" required><button id="runSearch">Search</button></form>
+    <p id="searchStatus" role="status" class="help">Enter a word or phrase.</p>
+    <div id="searchResults"></div>
+    <button id="moreResults" hidden>More results</button>
+  </dialog>
   <dialog id="settingsDialog" aria-labelledby="settingsTitle">
     <div class="settings-heading"><h1 id="settingsTitle">App settings</h1><button id="closeSettings" class="icon-button" aria-label="Close settings">×</button></div>
     <section class="settings">

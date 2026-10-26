@@ -45,8 +45,19 @@ try {
         const result = ({ handshake: { protocolVersion: 1, minimumProtocolVersion: 1, bridgeVersion: version }, hello: { workspace: '/local/workspace', authenticated: true }, list: { chats: [] }, models: { models: [
           { model: 'model-a', displayName: '5.6 Sol', isDefault: true, defaultReasoningEffort: 'medium', supportedReasoningEfforts: [{ reasoningEffort: 'medium' }, { reasoningEffort: 'high' }] },
           { model: 'model-b', displayName: '6 Sol', defaultReasoningEffort: 'high', supportedReasoningEfforts: [{ reasoningEffort: 'high' }] },
-        ] }, new: { chat: { id: 'test-chat', workspace: '/local/workspace' } }, send: { status: 'running' } })[message.method] || {};
+        ] }, search: message.params.query === 'missing' ? { results: [], total: 0, nextOffset: null } : { results: [{ id: 'saved-chat', title: 'Saved <img src=x onerror=alert(1)> chat', source: 'Codex', snippet: 'A needle in a saved answer' }], total: 2, nextOffset: message.params.offset ? null : 1 },
+          view: { chat: { id: 'saved-chat', title: 'Saved chat', workspace: '/missing/workspace', status: 'completed', readOnly: true } },
+          resume: { chat: { id: 'saved-chat', title: 'Saved chat', workspace: '/local/workspace', status: 'completed' } },
+          new: { chat: { id: 'test-chat', workspace: '/local/workspace' } }, send: { status: 'running' } })[message.method] || {};
         queueMicrotask(() => {
+          if (message.method === 'search' && window.failSearch) { listener({ id: message.id, error: 'Search unavailable' }); return; }
+          if (message.method === 'resume' && window.failResume) { listener({ id: message.id, error: 'Saved provider unavailable' }); return; }
+          if (message.method === 'view') {
+            listener({ event: 'historyStart', chatId: 'saved-chat' });
+            listener({ event: 'historyMessage', chatId: 'saved-chat', message: { role: 'user', text: 'Needle <img src=x onerror=alert(1)>' } });
+            listener({ event: 'historyMessage', chatId: 'saved-chat', message: { role: 'assistant', text: 'Another needle' } });
+            listener({ event: 'historyMessage', chatId: 'saved-chat', message: { role: 'reference', text: 'Page context needle' } });
+          }
           if (message.method === 'handshake' && sessionStorage.getItem('protocolMode') === 'panel-conflict') { listener({ id: message.id, error: 'The bridge is open in another panel. Close that panel before reconnecting.' }); return; }
           if (message.method === 'handshake' && sessionStorage.getItem('protocolMode') === 'legacy') { listener({ id: message.id, error: 'Unknown method: handshake' }); return; }
           if (message.method === 'handshake' && sessionStorage.getItem('protocolMode') === 'incompatible') { listener({ id: message.id, result: { protocolVersion: 2, minimumProtocolVersion: 2, bridgeVersion: '1.0.0' } }); return; }
@@ -231,6 +242,51 @@ try {
   await page.locator('#connect').click();
   await page.waitForFunction(() => !document.getElementById('model').disabled);
   assert.equal(await page.locator('#error').isVisible(), false);
+  await page.locator('#closeSettings').click();
+  await page.locator('#prompt').fill('Preserve this unsent draft');
+  const beforeSearch = await page.evaluate(() => window.calls.length);
+  await page.locator('#openSearch').click();
+  await page.locator('#searchQuery').fill('needle');
+  await page.locator('#searchQuery').press('Enter');
+  await page.waitForFunction(() => document.getElementById('searchStatus').textContent.includes('2 chats'));
+  assert.equal(await page.locator('.search-result mark').textContent(), 'needle');
+  assert.equal(await page.locator('#searchResults img').count(), 0);
+  await page.locator('#moreResults').click();
+  await page.waitForFunction(() => document.querySelectorAll('.search-result').length === 2);
+  assert.equal(await page.locator('#moreResults').isVisible(), false);
+  await page.setViewportSize({ width: 320, height: 760 });
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  await page.screenshot({ path: '.runtime/search-narrow.png' });
+  await page.locator('.search-result').first().click();
+  await page.waitForFunction(() => document.getElementById('matchStatus').textContent.includes('1 of 3'));
+  assert.equal(await page.locator('#messages .body img').count(), 0);
+  assert.equal(await page.locator('#send').isDisabled(), true);
+  assert.equal(await page.locator('#prompt').inputValue(), 'Preserve this unsent draft');
+  await page.locator('#prompt').press('Enter');
+  assert.equal(await page.evaluate(start => window.calls.slice(start).some(c => ['send', 'new', 'resume'].includes(c.method)), beforeSearch), false);
+  await page.locator('#nextMatch').click();
+  assert.match(await page.locator('#matchStatus').textContent(), /2 of 3/);
+  await page.locator('#previousMatch').click();
+  assert.match(await page.locator('#matchStatus').textContent(), /1 of 3/);
+  await page.screenshot({ path: '.runtime/search-preview-narrow.png' });
+  await page.evaluate(() => { window.failResume = true; });
+  await page.locator('#continueChat').click();
+  await page.waitForFunction(() => document.getElementById('error').textContent.includes('Saved provider unavailable'));
+  assert.equal(await page.locator('#messages mark').count(), 3);
+  assert.equal(await page.locator('#send').isDisabled(), true);
+  await page.evaluate(() => { window.failResume = false; });
+  await page.locator('#continueChat').click();
+  await page.waitForFunction(() => document.getElementById('historyPreview').hidden);
+  assert.equal(await page.locator('#send').isDisabled(), false);
+  await page.locator('#openSearch').click();
+  await page.locator('#searchQuery').fill('missing'); await page.locator('#runSearch').click();
+  await page.waitForFunction(() => document.getElementById('searchStatus').textContent.includes('0 chats'));
+  assert.equal(await page.locator('.search-result').count(), 0);
+  await page.evaluate(() => { window.failSearch = true; });
+  await page.locator('#searchQuery').fill('needle'); await page.locator('#runSearch').click();
+  await page.waitForFunction(() => document.getElementById('searchStatus').textContent === 'Search unavailable');
+  assert.equal(await page.locator('#runSearch').isDisabled(), false);
+  await page.locator('#closeSearch').click();
   assert.deepEqual(errors, []);
-  console.log('Panel UI passed: no attachment label/page picker; streamed/resumed response copying and clipboard errors; response retry warnings keep Stop available and clear on recovery; session/permanent website preferences, opt-in action bypass, revocation and separate workspace edits; draft preserved without automatic send, fresh cross-site context, model/effort selection, 320–1440px layouts, restricted tabs allow chat without stale attachments, compatibility errors prevent startup/send, no page errors.');
+  console.log('Panel UI passed: full-text search pagination, safe highlights, narrow preview, no inference during search/view, draft preservation, unavailable-provider preview retention and explicit continuation;  no attachment label/page picker; streamed/resumed response copying and clipboard errors; response retry warnings keep Stop available and clear on recovery; session/permanent website preferences, opt-in action bypass, revocation and separate workspace edits; draft preserved without automatic send, fresh cross-site context, model/effort selection, 320–1440px layouts, restricted tabs allow chat without stale attachments, compatibility errors prevent startup/send, no page errors.');
 } finally { await browser?.close(); server.close(); }

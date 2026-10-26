@@ -1,5 +1,15 @@
 # Task Ledger
 
+## Full-text saved-chat search — 2026-10-26
+
+State: Verified; source bridge updated, Chrome UI reload pending. Owner: Codex. Acceptance: search all saved extension titles, messages and captured page fields; paginate every matching chat; safely highlight and navigate matches in read-only cached transcripts without inference; resume only through Continue chat.
+
+Changes: Store literal Unicode-aware case-insensitive search with bounded 20-chat result pages and snippets; native search/view methods with validation and chunked saved messages/page context; Search dialog, result pagination, safe DOM highlights, match navigation, read-only composer guard, explicit continuation and retained preview on resume failure. Scope is the extension's saved transcript cache; desktop-only chats/messages are not imported. No new dependencies, database, provider changes or external search service. Existing unrelated .DS_Store preserved.
+
+Verification: 64/64 tests pass; syntax/manifest and whitespace checks pass. Added backend coverage for title/user/assistant/page fields, deep-message matches, Unicode/literal metacharacters, empty/invalid queries, all pagination results, bounded frames, missing workspace/provider, ownership checks, active-turn guard and unchanged data. Synthetic Chrome UI suite passes search pagination, escaped malicious text, highlights/navigation, 320px layout, no inference during search/view, draft preservation, Enter/send protection in preview, unavailable-provider preview retention, explicit continuation, zero-results and error recovery, plus the existing panel regressions. Initial UI assertion counted the legitimate copy icon as injected content; corrected it to inspect message bodies and reran successfully. Search and preview screenshots inspected. Read-only verification against all 28 currently saved chats passed with 183 bounded native frames, no Codex process and unchanged chat-index hash.
+
+Delivery: source checkout requires Chrome extension reload/reconnection; requested the user save drafts/close panels before activation. Browser automation denied navigation to chrome://extensions under its URL policy; manual Local Codex Reload and actual Chrome-panel verification remain with the user. No packaged release or remote-Mac deployment. Search is local exact-phrase matching over saved extension content, including chats whose provider cannot resume.
+
 ## Codex sidebar history integration — 2026-10-26
 
 State: Deployed locally (source bridge), verified. Owner: Codex. Acceptance: new extension chats share desktop history; existing IDs, workspaces and user messages survive registration; isolated test history remains explicitly configurable.

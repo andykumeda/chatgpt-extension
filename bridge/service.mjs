@@ -143,6 +143,13 @@ export class Bridge {
       return { workspace };
     }
     if (method === 'list') return { chats: this.store.summaries() };
+    if (method === 'search') return this.store.search(params.query, params.offset);
+    if (method === 'view') {
+      if (this.active) throw new Error('Wait for the running turn or stop it before viewing another chat.');
+      const chat = this.store.get(params.id);
+      this.emitHistory(chat, true);
+      return { chat: { id: chat.id, title: chat.title, workspace: chat.workspace, status: chat.status, readOnly: true } };
+    }
     if (method === 'new') {
       if (this.active) throw new Error('A turn is already running. Stop it first.');
       if (this.store.data.chats.length >= 200) throw new Error('Prototype limit: 200 chats. Preserve the index before starting a fresh prototype state folder.');
@@ -176,14 +183,7 @@ export class Bridge {
         this.reconcile(chat, result.thread.turns || []);
         this.store.save();
       }
-      // One bounded chunk per event: history can exceed Chrome's per-message limit.
-      this.emit({ event: 'historyStart', chatId: chat.id });
-      for (const message of chat.messages) {
-        const text = message.text || '';
-        for (let start = 0; start < Math.max(1, text.length); start += 16000) {
-          this.emit({ event: 'historyMessage', chatId: chat.id, message: { ...message, page: message.page ? { title: message.page.title, url: message.page.url } : null, text: text.slice(start, start + 16000) }, append: start > 0 });
-        }
-      }
+      this.emitHistory(chat);
       return { chat: { id: chat.id, title: chat.title, workspace, status: chat.status, browserTools: chat.browserTools === true } };
     }
     if (method === 'send') {
@@ -245,6 +245,20 @@ export class Bridge {
       return { status: 'stopping' };
     }
     throw new Error('Unsupported bridge operation.');
+  }
+
+  emitHistory(chat, includePages = false) {
+    this.emit({ event: 'historyStart', chatId: chat.id });
+    const emitText = (role, text) => {
+      // One bounded chunk per event, including large saved page snapshots.
+      for (let start = 0; start < Math.max(1, text.length); start += 16000) {
+        this.emit({ event: 'historyMessage', chatId: chat.id, message: { role, text: text.slice(start, start + 16000) }, append: start > 0 });
+      }
+    };
+    for (const message of chat.messages) {
+      emitText(message.role, message.text || '');
+      if (includePages && message.page) emitText('reference', [message.page.title, message.page.url, message.page.text, message.page.selectedText].filter(Boolean).join('\n\n'));
+    }
   }
 
   browserTool(params) {

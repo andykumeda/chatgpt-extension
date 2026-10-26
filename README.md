@@ -40,6 +40,14 @@ For source installation, no build step or npm dependencies are required. For a G
 - Page text is untrusted reference data. Only the direct user message and user-selected permissions authorize tasks. Captured text is bounded to 40,000 characters, selection to 8,000, title to 1,000, and URL to 8,192. Current-page identity is available in settings; no alternate page can be selected.
 - Captured webpage content is sent to Codex's configured inference provider when you press Send. A local bridge does not mean model inference runs offline.
 
+### Search saved chats
+
+Click **Search** at the top left, enter a word or phrase, and press Enter. Search covers every saved extension chat's title, user/assistant messages, and captured page title, URL, text and selection. Matching is literal and case-insensitive; **More results** pages through all matching chats. Results include a matching excerpt.
+
+Choose a result to read the saved conversation and page context, with highlighted matches and previous/next controls. This preview preserves your unsent draft and does not run inference, change the workspace, or require the chat's old provider. **Continue chat** explicitly resumes it; a resume failure leaves the saved preview readable. The message composer cannot send while previewing. Search and previews run locally through the native bridge, without a model request or external search service.
+
+Search covers the extension's saved transcript cache, including completed and interrupted chats. Desktop-only chats and messages added only in another client are outside this cache. Captured page text is limited to what was saved when the message was sent. Search uses an exact phrase, with no semantic or fuzzy matching. Close panels and reload the unpacked extension after updating both UI and source bridge; an old running bridge must reconnect for the new commands.
+
 ### Desktop history
 
 Close all Local Codex panels and reopen after updating the source bridge. New chats use the same history as desktop Codex; refresh the desktop sidebar if needed. Older chats can be reopened from the extension history to register/resume them through Codex. The first send publishes the extension title without browser-grant/page text; resume restores a missing desktop title and preserves an existing desktop name. A saved chat whose provider was removed may be visible in history but cannot resume until that configuration is resolved; no provider fallback is applied. Use one client at a time for a given chat: the extension’s concurrency guard covers its own panels, not a separate desktop process. Browser tools still require the extension; desktop continuation does not provide its Chrome executor.

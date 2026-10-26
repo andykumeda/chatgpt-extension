@@ -35,4 +35,30 @@ export class Store {
   summaries() {
     return this.data.chats.map(({ id, title, workspace, status }) => ({ id, title, workspace, status }));
   }
+
+  search(query, offset = 0) {
+    if (typeof query !== 'string' || query.length > 500) throw new Error('Search must be at most 500 characters.');
+    if (!Number.isSafeInteger(offset) || offset < 0) throw new Error('Invalid search offset.');
+    const needle = query.trim();
+    if (!needle) return { results: [], total: 0, nextOffset: null };
+    const pattern = new RegExp(needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'iu');
+    const matches = [];
+    for (const chat of this.data.chats) {
+      const fields = [['Title', chat.title]];
+      for (const message of chat.messages) {
+        fields.push([message.role === 'assistant' ? 'Codex' : 'You', message.text]);
+        if (message.page) for (const key of ['title', 'url', 'text', 'selectedText']) fields.push(['Page context', message.page[key]]);
+      }
+      for (const [source, text] of fields) {
+        if (typeof text !== 'string') continue;
+        const index = text.search(pattern);
+        if (index < 0) continue;
+        const start = Math.max(0, index - 70), end = Math.min(text.length, index + needle.length + 100);
+        matches.push({ id: chat.id, title: chat.title, source, snippet: `${start ? '…' : ''}${text.slice(start, end)}${end < text.length ? '…' : ''}` });
+        break;
+      }
+    }
+    // Keep each native response bounded even when every saved chat matches.
+    return { results: matches.slice(offset, offset + 20), total: matches.length, nextOffset: offset + 20 < matches.length ? offset + 20 : null };
+  }
 }

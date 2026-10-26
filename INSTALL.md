@@ -91,3 +91,7 @@ For the current source installation, close every Local Codex panel, run `npm run
 ## Desktop history integration (source checkout)
 
 The source bridge now inherits Codex’s SQLite history location. Close all Local Codex panels and reopen after updating; use the same Codex home/configuration as the desktop app. Existing chats and isolated databases are preserved. See [Desktop history](README.md#desktop-history) for optional isolation, older-chat recovery, and concurrent-client limitations. This change is not included in the previously published companion release.
+
+## Saved-chat search (source checkout)
+
+After updating, save any draft, close all Local Codex panels, and click Reload for Local Codex in `chrome://extensions`. Reopen the panel and use **Search** at the top left. The refreshed source bridge supplies local full-text search and saved previews; see [Search saved chats](README.md#search-saved-chats) for scope and continuation behavior. The published companion bundle needs a future release for these commands.
