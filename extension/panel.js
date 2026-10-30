@@ -342,7 +342,7 @@ async function captureCurrentPage() {
       return null;
     }
     page = result;
-    $('currentPageStatus').textContent = `${page.title || 'Current page'} · ${page.url}`;
+    $('currentPageStatus').textContent = `${page.title || 'Current page'} · ${page.url}${page.captureWarning ? ` · ${page.captureWarning}` : ''}`;
     return page;
   } catch (error) {
     $('currentPageStatus').textContent = 'Current page unavailable. Enable website access or use the toolbar icon.';
