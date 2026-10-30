@@ -70,3 +70,12 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 160px; overflo
 [hidden] { display: none !important; }
 @media (min-width: 600px) { .chat-header { min-height: 66px; } #chats { font-size: 28px; } .menu { width: 522px; } .menu button { font-size: 26px; } .version { font-size: 24px; } footer { padding: 16px 16px 0; } #sendForm { border-radius: 40px; padding: 28px 24px 16px; } textarea { height: 74px; min-height: 74px; font-size: 28px; } .model-controls select { font-size: 23px; max-width: 220px; } #effort { max-width: 125px; } .round-button { width: 56px; min-height: 56px; font-size: 36px; } .composer-toolbar { margin-top: 16px; } #empty .brand-mark { width: 102px; height: 102px; transform: translateY(12px); } }
 @media (max-width: 360px) { .model-controls select { max-width: 100px; font-size: 12px; } #effort { max-width: 65px; } }
+
+#openCapabilities { flex-shrink: 0; padding: 6px; font-size: 12px; }
+#capabilitiesList .toggle { display: flex; gap: 8px; align-items: flex-start; padding: 10px 0; font-size: 12px; overflow-wrap: anywhere; }
+#capabilitiesList input { flex-shrink: 0; }
+#capabilitySearch, #toolPromptFields input, #toolPromptFields select, #toolPromptFields textarea { width: 100%; padding: 8px; margin: 8px 0; border: 1px solid var(--border); border-radius: 8px; }
+#toolPromptFields label { display: block; font-size: 14px; overflow-wrap: anywhere; }
+#selectedCapabilities { max-height: 48px; overflow: auto; }
+
+#toolPromptFields textarea:focus-visible { outline: 2px solid #555; }

@@ -5,7 +5,7 @@ import path from 'node:path';
 import { openaiEndpoint } from './config.mjs';
 
 export class CodexClient extends EventEmitter {
-  constructor({ binary, cwd, state, codexHome, scratch, toolHandler, modelCatalog, openaiBaseUrl, sqliteHome }) {
+  constructor({ binary, cwd, state, codexHome, scratch, toolHandler, modelCatalog, openaiBaseUrl, sqliteHome, promptHandler }) {
     super();
     this.pending = new Map();
     this.nextId = 1;
@@ -18,12 +18,12 @@ export class CodexClient extends EventEmitter {
       'sandbox_workspace_write.exclude_tmpdir_env_var': true,
       'shell_environment_policy.inherit': 'none',
       'shell_environment_policy.set': { HOME: process.env.HOME, PATH: '/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin', TMPDIR: scratch },
-      'features.apps': false, 'features.plugins': false, 'features.hooks': false,
+      'features.apps': true, 'features.plugins': true, 'features.hooks': false,
       'features.multi_agent': false,
       'features.shell_snapshot': false, 'features.browser_use': false,
       'features.browser_use_external': false, 'features.computer_use': false,
       'features.in_app_browser': false, 'features.memories': false,
-      'features.image_generation': false, 'features.remote_plugin': false,
+      'features.image_generation': false,
       web_search: 'disabled', notify: [],
     };
     // TOML inline tables differ from JSON objects; shell env uses individual dotted keys.
@@ -59,6 +59,13 @@ export class CodexClient extends EventEmitter {
           Promise.resolve().then(() => toolHandler(message.params)).then(
             result => this.child.stdin.write(`${JSON.stringify({ id: message.id, result })}\n`),
             () => this.child.stdin.write(`${JSON.stringify({ id: message.id, result: { success: false, contentItems: [{ type: 'inputText', text: 'Browser tool failed or was denied. Do not retry automatically.' }] } })}\n`),
+          ).catch(() => {});
+          return;
+        }
+        if (promptHandler && ['item/tool/requestUserInput', 'tool/requestUserInput', 'mcpServer/elicitation/request'].includes(message.method)) {
+          Promise.resolve().then(() => promptHandler(message.method, message.params)).then(
+            result => this.child.stdin.write(`${JSON.stringify({ id: message.id, result })}\n`),
+            () => this.child.stdin.write(`${JSON.stringify({ id: message.id, error: { code: -32601, message: 'Tool prompt unavailable or cancelled. No action approved.' } })}\n`),
           ).catch(() => {});
           return;
         }

@@ -30,16 +30,30 @@
         <strong>Approve browser action?</strong><pre id="browserAction"></pre>
         <div class="row"><button id="denyBrowser" type="button">Deny</button><button id="approveBrowser" type="button">Allow once</button></div>
       </section>
+      <div id="selectedCapabilities" class="help" role="status"></div>
       <form id="sendForm">
         <textarea id="prompt" aria-label="Message to Codex" placeholder="Do anything" rows="3" maxlength="16000" required></textarea>
         <div class="composer-toolbar">
-          <div class="model-controls"><select id="model" aria-label="Model" disabled><option value="">Loading models…</option></select><select id="effort" aria-label="Reasoning effort" disabled><option value="">Medium</option></select></div>
+          <button id="openCapabilities" type="button" aria-label="Choose plugins and skills" disabled>＋ Tools</button><div class="model-controls"><select id="model" aria-label="Model" disabled><option value="">Loading models…</option></select><select id="effort" aria-label="Reasoning effort" disabled><option value="">Medium</option></select></div>
           <button id="stop" class="round-button" type="button" aria-label="Stop response" hidden>■</button><button id="send" class="round-button" type="submit" aria-label="Send message" disabled>↑</button>
         </div>
       </form>
       <div id="state" role="status" class="status">Ready</div>
     </footer>
   </div>
+  <dialog id="capabilitiesDialog" aria-labelledby="capabilitiesTitle">
+    <div class="settings-heading"><h1 id="capabilitiesTitle">Plugins and skills</h1><button id="closeCapabilities" class="icon-button" aria-label="Close plugins and skills">×</button></div>
+    <p class="help">Uses your installed Codex plugins, connected apps and skills for this workspace. Manage installation, sign-in and enabled settings in Codex. Connected tools may read or change external data according to your request and existing Codex policies.</p>
+    <input id="capabilitySearch" type="search" aria-label="Filter plugins and skills" placeholder="Search plugins, apps and skills">
+    <button id="refreshCapabilities" type="button">Refresh</button>
+    <p id="capabilitiesStatus" class="help" role="status"></p>
+    <div id="capabilitiesList"></div>
+  </dialog>
+  <dialog id="toolPromptDialog" aria-labelledby="toolPromptTitle">
+    <h1 id="toolPromptTitle">Connected tool request</h1>
+    <p class="help">Review this request from a connected tool. Never enter passwords, tokens or payment details here. Complete authentication in Codex.</p>
+    <form id="toolPromptForm"><div id="toolPromptFields"></div><p id="toolPromptError" role="alert"></p><button type="submit">Submit response</button><button id="cancelToolPrompt" type="button">Cancel</button><button id="stopToolPrompt" type="button">Stop response</button></form>
+  </dialog>
   <dialog id="searchDialog" aria-labelledby="searchTitle">
     <div class="settings-heading"><h1 id="searchTitle">Search chats</h1><button id="closeSearch" class="icon-button" aria-label="Close search">×</button></div>
     <p class="help">Search all saved extension chats: titles, messages, and captured page text. Case-insensitive phrase matching. Search stays on this Mac.</p>

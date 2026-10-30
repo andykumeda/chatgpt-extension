@@ -1,5 +1,6 @@
 import { captureActivePage } from './capture.js';
 import { LiveBrowser } from './browser.js';
+import { setupCapabilities } from './capabilities.js';
 import distribution from './distribution.js';
 import { GlobalAccess, PAGE_ORIGINS } from './permissions.js';
 
@@ -25,12 +26,14 @@ function connectionGuidance(message) {
 
 let port, connecting = false, connected = false, compatible = false, authenticated = false, busy = false, current = null, page = null, nextId = 1;
 const pending = new Map();
+const tools = setupCapabilities({ request, workspace: () => current && !current.readOnly ? { id: current.id } : { workspace: $('workspace').value }, fail });
 let assistantBody = null, itemId = null;
 const browser = new LiveBrowser();
 let browserApproval = null, startupError = null, models = [];
 let historyMarks = [], matchIndex = -1, searchVersion = 0, searchedQuery = '', searchOffset = null;
 function endBrowser() {
   browser.disable();
+  tools.cancelPrompt();
   browserApproval?.resolve(false); browserApproval = null;
   $('browserApproval').hidden = true; $('browserTarget').textContent = '';
 }
@@ -62,6 +65,7 @@ function clearError() { $('error').hidden = true; }
 function controls() {
   $('send').disabled = !connected || !authenticated || busy || !models.length || current?.readOnly === true;
   $('openSearch').disabled = !compatible || busy;
+  $('openCapabilities').disabled = !connected || !authenticated || busy || current?.readOnly === true;
   $('historyPreview').hidden = !current?.readOnly;
   $('continueChat').disabled = busy || !connected || !authenticated;
   $('stop').hidden = !busy;
@@ -186,6 +190,7 @@ $('previousMatch').addEventListener('click', () => moveMatch(-1));
 $('nextMatch').addEventListener('click', () => moveMatch(1));
 $('continueChat').addEventListener('click', () => { if (current) void resume(current.id); });
 function events(message) {
+  if (message.event === 'toolPrompt') { if (busy && message.chatId === current?.id) tools.prompt(message); return; }
   if (message.event === 'fatal') { startupError = message.message; fail(message.message); return; }
   if (message.event === 'browserRequest') {
     const execute = async () => {
@@ -300,6 +305,7 @@ async function connect() {
   finally { connecting = false; controls(); }
 }
 async function resume(id, method = 'resume') {
+  tools.clear();
   const previous = current;
   clearError(); setState('Starting');
   try {
@@ -320,12 +326,14 @@ $('workspaceForm').addEventListener('submit', async event => {
   try {
     if (!compatible) throw new Error(`Confirm bridge compatibility before changing the workspace. ${setupGuidance}`);
     const result = await request('setWorkspace', { workspace: $('workspace').value });
+    tools.clear();
     $('workspace').value = result.workspace;
     if (!connected) await connect(); else setState('Workspace saved');
   } catch (error) { fail(error.message); }
 });
 $('newChat').addEventListener('click', () => {
   endBrowser(); $('allowBrowser').checked = false;
+  tools.clear();
   current = null; $('chats').value = ''; $('chatWorkspace').textContent = ''; $('allowEdits').checked = false; resetMessages(); clearError(); setState('Ready');
 });
 $('chats').addEventListener('change', () => {
@@ -435,7 +443,8 @@ $('sendForm').addEventListener('submit', async event => {
       $('chatWorkspace').textContent = `Chat workspace: ${current.workspace}`;
     }
     appendMessage('user', text); assistantBody = null; itemId = null;
-    const result = await request('send', { id: current.id, text, page, allowEdits: $('allowEdits').checked, allowBrowser: browserEnabled, model: $('model').value, effort: $('effort').value || null });
+    const result = await request('send', { id: current.id, text, page, allowEdits: $('allowEdits').checked, allowBrowser: browserEnabled, model: $('model').value, effort: $('effort').value || null, capabilities: tools.selected() });
+    tools.clear();
     $('prompt').value = ''; $('allowEdits').checked = false; $('allowBrowser').checked = false;
     if (['starting', 'running'].includes(result.status)) setState('Running');
     await refreshChats();

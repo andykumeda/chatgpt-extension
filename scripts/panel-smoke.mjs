@@ -42,7 +42,11 @@ try {
         if (sessionStorage.getItem('protocolMode') === 'connect-throws') throw new Error('Extension context invalidated.');
         return { onMessage: { addListener(fn) { listener = fn; } }, onDisconnect: noopEvent, disconnect() {}, postMessage(message) {
         window.calls.push(message);
-        const result = ({ handshake: { protocolVersion: 1, minimumProtocolVersion: 1, bridgeVersion: version }, hello: { workspace: '/local/workspace', authenticated: true }, list: { chats: [] }, models: { models: [
+        const result = ({ handshake: { protocolVersion: 1, minimumProtocolVersion: 1, bridgeVersion: version }, hello: { workspace: '/local/workspace', authenticated: true }, list: { chats: [] }, capabilities: { items: [
+          { kind: 'skill', name: 'example', label: 'Example skill', path: '/skills/example/SKILL.md', enabled: true, description: '<img src=x onerror=alert(1)>' },
+          { kind: 'plugin', name: 'demo', label: 'Demo plugin', path: 'plugin://demo', enabled: true, description: 'Installed' },
+          { kind: 'app', name: 'disabled', label: 'Disabled app', path: 'app://disabled', enabled: false, description: 'Disabled in Codex' },
+        ], warnings: [] }, models: { models: [
           { model: 'model-a', displayName: '5.6 Sol', isDefault: true, defaultReasoningEffort: 'medium', supportedReasoningEfforts: [{ reasoningEffort: 'medium' }, { reasoningEffort: 'high' }] },
           { model: 'model-b', displayName: '6 Sol', defaultReasoningEffort: 'high', supportedReasoningEfforts: [{ reasoningEffort: 'high' }] },
         ] }, search: message.params.query === 'missing' ? { results: [], total: 0, nextOffset: null } : { results: [{ id: 'saved-chat', title: 'Saved <img src=x onerror=alert(1)> chat', source: 'Codex', snippet: 'A needle in a saved answer' }], total: 2, nextOffset: message.params.offset ? null : 1 },
@@ -82,6 +86,19 @@ try {
   assert.equal(await page.locator('#downloadLink').isVisible(), false);
   assert.equal(await page.locator('#storeLink').isVisible(), false);
   await page.locator('#closeSettings').click();
+  await page.locator('#openCapabilities').click();
+  await page.waitForFunction(() => document.querySelectorAll('#capabilitiesList input').length === 3);
+  assert.equal(await page.locator('#capabilitiesList img').count(), 0);
+  assert.equal(await page.locator('#capabilitiesList input').last().isDisabled(), true);
+  await page.locator('#capabilitySearch').fill('skill');
+  assert.equal(await page.locator('#capabilitiesList input').count(), 1);
+  await page.locator('#capabilitiesList input').check();
+  await page.locator('#capabilitySearch').fill('');
+  await page.locator('#capabilitiesList input').nth(1).check();
+  await page.setViewportSize({ width: 320, height: 988 });
+  assert.equal(await page.evaluate(() => document.getElementById('capabilitiesDialog').scrollWidth <= innerWidth), true);
+  await page.screenshot({ path: '.runtime/capabilities-picker.png' });
+  await page.locator('#closeCapabilities').click();
   await page.locator('#model').selectOption('model-b');
   assert.equal(await page.locator('#effort').inputValue(), 'high');
   await page.locator('#prompt').fill('Summarize this page');
@@ -89,9 +106,35 @@ try {
   await page.locator('#send').click();
   await page.waitForFunction(() => window.calls.some(call => call.method === 'send'));
   const sent = await page.evaluate(() => window.calls.find(call => call.method === 'send').params);
+  assert.deepEqual(sent.capabilities, ['/skills/example/SKILL.md', 'plugin://demo']);
   assert.equal(sent.model, 'model-b'); assert.equal(sent.effort, 'high');
   assert.equal(sent.page.text, `Fresh snapshot ${before + 1}`);
   await page.waitForFunction(() => document.getElementById('state').textContent === 'Completed');
+  assert.equal(await page.locator('#selectedCapabilities').textContent(), '');
+  await page.evaluate(() => {
+    window.nativeEvent({ event: 'state', chatId: 'test-chat', status: 'running' });
+    window.nativeEvent({ event: 'toolPrompt', chatId: 'test-chat', requestId: 'approval', prompt: { mode: 'questions', questions: [{ id: 'confirm', question: 'Approve example action?', options: [{ label: 'Accept' }, { label: 'Decline' }] }] } });
+  });
+  await page.locator('#toolPromptFields input').fill('Decline');
+  await page.locator('#toolPromptForm button[type=submit]').click();
+  await page.waitForFunction(() => !document.getElementById('toolPromptDialog').open);
+  assert.deepEqual(await page.evaluate(() => window.calls.find(call => call.method === 'toolPromptResult').params), { requestId: 'approval', answers: { confirm: { answers: ['Decline'] } } });
+  await page.evaluate(() => window.nativeEvent({ event: 'toolPrompt', chatId: 'test-chat', requestId: 'form', prompt: { mode: 'form', serverName: 'demo', message: 'Confirm', schema: { type: 'object' } } }));
+  await page.locator('#toolPromptFields select').selectOption('accept');
+  await page.locator('#toolPromptFields textarea').fill('invalid JSON');
+  await page.locator('#toolPromptForm button[type=submit]').click();
+  assert.equal(await page.locator('#toolPromptDialog').isVisible(), true);
+  await page.locator('#toolPromptFields textarea').fill('{"approved":true}');
+  await page.locator('#toolPromptForm button[type=submit]').click();
+  await page.waitForFunction(() => !document.getElementById('toolPromptDialog').open);
+  await page.evaluate(() => {
+    window.nativeEvent({ event: 'toolPrompt', chatId: 'test-chat', requestId: 'stop-prompt', prompt: { mode: 'questions', questions: [] } });
+  });
+  await page.locator('#stopToolPrompt').click();
+  await page.waitForFunction(() => window.calls.some(call => call.method === 'stop'));
+  assert.equal(await page.locator('#toolPromptDialog').isVisible(), false);
+  await page.evaluate(() => window.nativeEvent({ event: 'state', chatId: 'test-chat', status: 'interrupted' }));
+  await page.evaluate(() => window.nativeEvent({ event: 'state', chatId: 'test-chat', status: 'completed' }));
   assert.equal(await page.locator('#attachment').count(), 0);
   assert.equal(await page.locator('.source').count(), 0);
   await page.locator('.copy-output').first().click();
@@ -288,5 +331,5 @@ try {
   assert.equal(await page.locator('#runSearch').isDisabled(), false);
   await page.locator('#closeSearch').click();
   assert.deepEqual(errors, []);
-  console.log('Panel UI passed: full-text search pagination, safe highlights, narrow preview, no inference during search/view, draft preservation, unavailable-provider preview retention and explicit continuation;  no attachment label/page picker; streamed/resumed response copying and clipboard errors; response retry warnings keep Stop available and clear on recovery; session/permanent website preferences, opt-in action bypass, revocation and separate workspace edits; draft preserved without automatic send, fresh cross-site context, model/effort selection, 320–1440px layouts, restricted tabs allow chat without stale attachments, compatibility errors prevent startup/send, no page errors.');
+  console.log('Panel UI passed: plugin/skill picker, safe metadata, explicit skill/plugin selection, disabled states, connector approvals, JSON form recovery and Stop from a modal; full-text search pagination, safe highlights, narrow preview, no inference during search/view, draft preservation, unavailable-provider preview retention and explicit continuation;  no attachment label/page picker; streamed/resumed response copying and clipboard errors; response retry warnings keep Stop available and clear on recovery; session/permanent website preferences, opt-in action bypass, revocation and separate workspace edits; draft preserved without automatic send, fresh cross-site context, model/effort selection, 320–1440px layouts, restricted tabs allow chat without stale attachments, compatibility errors prevent startup/send, no page errors.');
 } finally { await browser?.close(); server.close(); }

@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { ToolPrompts } from '../bridge/tool-prompts.mjs';
 import { browserOperation, BrowserRequests } from '../bridge/browser.mjs';
 import { browserURL, LiveBrowser } from '../extension/browser.js';
 import { Bridge } from '../bridge/service.mjs';
@@ -71,6 +72,7 @@ test('bridge browser grant is scoped to the active thread/turn and stop revokes 
   const bridge = Object.create(Bridge.prototype);
   const emitted = [];
   bridge.browser = new BrowserRequests(message => emitted.push(message));
+  bridge.prompts = new ToolPrompts(message => emitted.push(message));
   const params = { tool: 'local_browser', threadId: 'chat', turnId: 'turn', arguments: { operation: 'read' } };
   assert.throws(() => bridge.browserTool(params), /not enabled/);
   bridge.active = { chat: { id: 'chat' }, assistant: { turnId: 'turn' }, allowBrowser: false };
