@@ -2,7 +2,7 @@
 
 ### Markdown rendering and two-Mac rollout — 2026-11-02
 
-State: Verified (source); device activation pending. Owner: current repair chat. Acceptance: render assistant Markdown during streaming and saved-history restore, retain original copy/search text, prevent active HTML and remote image loading, package the renderer, and install on both requested Macs without disturbing settings or drafts.
+State: Verified (source installed on both Macs); Chrome activation pending. Owner: current repair chat. Acceptance: render assistant Markdown during streaming and saved-history restore, retain original copy/search text, prevent active HTML and remote image loading, package the renderer, and install on both requested Macs without disturbing settings or drafts.
 
 Cause: the panel inserted all response text as plain text; Markdown rendering was explicitly unsupported. Change: locally bundled MIT-licensed markdown-it renders assistant responses with raw HTML disabled, HTTP(S)-only links opened safely in a new tab, and images represented by alt text. Search preview continues to highlight the original text and Copy preserves original Markdown. User messages and page context remain plain text. Files: panel HTML/CSS/JS, bundled parser/license, extension archive allowlist and browser smoke.
 
@@ -11,7 +11,7 @@ Verification: 76/76 tests passed with normal filesystem permissions; syntax/mani
 | Device | State | Evidence / remaining action |
 |---|---|---|
 | Mini (AKsMini) | Verified | Source in existing unpacked extension checkout; Chrome reload and live smoke pending. |
-| MacBook (AKs-MBPro.local) | In progress | Existing checkout is an ancestor of Mini source; fast-forward and separate checks pending. |
+| MacBook (AKs-MBPro.local) | Verified | Existing checkout fast-forwarded to `9219c5c`; 76/76 tests and syntax/manifest check passed with its installed Node 22. Chrome reload and live smoke pending. |
 
 ## Codex plugins and skills in the side panel — 2026-10-30
 
