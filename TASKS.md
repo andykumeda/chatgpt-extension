@@ -1,5 +1,18 @@
 # Task Ledger
 
+### Markdown rendering and two-Mac rollout — 2026-11-02
+
+State: Verified (source); device activation pending. Owner: current repair chat. Acceptance: render assistant Markdown during streaming and saved-history restore, retain original copy/search text, prevent active HTML and remote image loading, package the renderer, and install on both requested Macs without disturbing settings or drafts.
+
+Cause: the panel inserted all response text as plain text; Markdown rendering was explicitly unsupported. Change: locally bundled MIT-licensed markdown-it renders assistant responses with raw HTML disabled, HTTP(S)-only links opened safely in a new tab, and images represented by alt text. Search preview continues to highlight the original text and Copy preserves original Markdown. User messages and page context remain plain text. Files: panel HTML/CSS/JS, bundled parser/license, extension archive allowlist and browser smoke.
+
+Verification: 76/76 tests passed with normal filesystem permissions; syntax/manifest check passed. Synthetic Chrome panel smoke passed for rendered headings, bold, code, lists, safe links, disabled HTML/images, history chunks, streamed formatting and original-text copying. Sandboxed full test initially had two existing Codex-home access failures; those passed with normal permissions. Mini and MacBook Chrome reload and live smoke remain pending. No public release.
+
+| Device | State | Evidence / remaining action |
+|---|---|---|
+| Mini (AKsMini) | Verified | Source in existing unpacked extension checkout; Chrome reload and live smoke pending. |
+| MacBook (AKs-MBPro.local) | In progress | Existing checkout is an ancestor of Mini source; fast-forward and separate checks pending. |
+
 ## Codex plugins and skills in the side panel — 2026-10-30
 
 State: Verified; normal-profile Chrome activation pending. Owner: Codex. Acceptance: use installed Codex plugins, connected apps, configured MCP tools and skills from the panel; select capabilities for the current workspace; preserve existing enabled settings and local edit/browser boundaries; route connector prompts only to the owning panel; cancel pending prompts without approving on stop/disconnect.

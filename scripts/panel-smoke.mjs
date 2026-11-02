@@ -150,6 +150,29 @@ try {
   });
   await page.locator('.copy-output').click();
   assert.equal(await page.evaluate(() => window.copiedText), 'Resumed response\nContinued history');
+  await page.evaluate(() => {
+    window.nativeEvent({ event: 'historyStart' });
+    window.nativeEvent({ event: 'historyMessage', message: { role: 'assistant', text: '# Title\n\n**bold** [safe](https://example.com) [bad](javascript:alert(1)) ![image](https://example.com/x) <img src=x onerror=alert(1)>\n\n```js\nconst x = 1;\n```' } });
+    window.nativeEvent({ event: 'historyMessage', append: true, message: { text: '\n\n- one\n- two' } });
+  });
+  assert.equal(await page.locator('.assistant h1').textContent(), 'Title');
+  assert.equal(await page.locator('.assistant strong').textContent(), 'bold');
+  assert.equal(await page.locator('.assistant pre code').textContent(), 'const x = 1;\n');
+  assert.equal(await page.locator('.assistant li').count(), 2);
+  assert.equal(await page.locator('.assistant .body img').count(), 0);
+  assert.equal(await page.locator('.assistant .body a').count(), 1);
+  assert.equal(await page.locator('.assistant .body a').getAttribute('rel'), 'noopener noreferrer');
+  await page.locator('.copy-output').click();
+  assert.match(await page.evaluate(() => window.copiedText), /^# Title/);
+  await page.evaluate(() => {
+    window.nativeEvent({ event: 'historyStart' });
+    window.nativeEvent({ event: 'delta', chatId: 'test-chat', itemId: 'stream', text: '**stream' });
+    window.nativeEvent({ event: 'delta', chatId: 'test-chat', itemId: 'stream', text: 'ed**' });
+  });
+  assert.equal(await page.locator('.assistant strong').textContent(), 'streamed');
+  await page.locator('.copy-output').click();
+  assert.equal(await page.evaluate(() => window.copiedText), '**streamed**');
+
   assert.equal(await page.locator('.source').count(), 0);
   await page.evaluate(() => { window.denyCapture = true; });
   await page.locator('#prompt').fill('Do not send stale context');

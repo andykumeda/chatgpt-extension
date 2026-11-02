@@ -35,6 +35,14 @@ main { flex: 1; min-height: 0; overflow: auto; padding: 20px; position: relative
 .message .role { font-size: 12px; font-weight: 600; margin-bottom: 6px; }
 .message.user { background: #f4f4f4; border-radius: 20px; padding: 14px 18px; margin: 0 0 24px auto; width: fit-content; max-width: 90%; }
 .message .body { white-space: pre-wrap; }
+.message.assistant .body { white-space: normal; }
+.message.assistant .body > :first-child { margin-top: 0; }
+.message.assistant .body > :last-child { margin-bottom: 0; }
+.message.assistant .body pre { max-height: none; overflow: auto; white-space: pre; overflow-wrap: normal; background: #f4f4f4; padding: 12px; border-radius: 8px; font: 12px/1.5 monospace; }
+.message.assistant .body :not(pre) > code { background: #f4f4f4; border-radius: 4px; padding: 1px 4px; }
+.message.assistant .body table { display: block; overflow-x: auto; border-collapse: collapse; }
+.message.assistant .body th, .message.assistant .body td { border: 1px solid #ddd; padding: 4px 8px; }
+.message.assistant .body blockquote { border-left: 3px solid #ddd; margin-left: 0; padding-left: 12px; }
 .copy-output { width: 44px; height: 44px; padding: 0; font-size: 22px; color: #666; }
 footer { padding: 12px 12px 0; flex-shrink: 0; }
 #sendForm { border: 1px solid var(--border); border-radius: 28px; box-shadow: 0 2px 15px #00000008; padding: 18px 16px 10px; }

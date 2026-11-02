@@ -5,6 +5,20 @@ import distribution from './distribution.js';
 import { GlobalAccess, PAGE_ORIGINS } from './permissions.js';
 
 const $ = id => document.getElementById(id);
+const markdown = globalThis.markdownit({ html: false, linkify: false });
+markdown.renderer.rules.image = (tokens, index) => markdown.utils.escapeHtml(tokens[index].content);
+markdown.validateLink = url => /^https?:\/\//i.test(url);
+markdown.renderer.rules.link_open = (tokens, index, options, env, renderer) => {
+  tokens[index].attrSet('target', '_blank'); tokens[index].attrSet('rel', 'noopener noreferrer');
+  return renderer.renderToken(tokens, index, options);
+};
+const messageText = new WeakMap();
+function setMessageText(body, text) {
+  messageText.set(body, text);
+  if (body.parentElement?.classList.contains('assistant')) body.innerHTML = markdown.render(text);
+  else body.textContent = text;
+}
+
 const extensionVersion = chrome.runtime.getManifest().version;
 const pageOrigins = PAGE_ORIGINS;
 const globalAccess = new GlobalAccess(chrome);
@@ -105,15 +119,15 @@ function appendMessage(role, text) {
   $('empty')?.remove();
   const article = document.createElement('article'); article.className = `message ${role}`;
   const label = document.createElement('div'); label.className = 'role'; label.textContent = role === 'reference' ? 'Page context' : role === 'assistant' ? 'Codex' : 'You';
-  const body = document.createElement('div'); body.className = 'body'; body.textContent = text;
-  article.append(label, body);
+  const body = document.createElement('div'); body.className = 'body';
+  article.append(label, body); setMessageText(body, text);
   if (role === 'assistant') {
     const copy = document.createElement('button'); copy.type = 'button'; copy.className = 'copy-output';
     const icon = document.createElement('img'); icon.src = 'copy.svg'; icon.alt = ''; icon.width = 18; icon.height = 18;
     copy.append(icon); copy.title = 'Copy response'; copy.setAttribute('aria-label', 'Copy response');
     copy.addEventListener('click', async () => {
       try {
-        await navigator.clipboard.writeText(body.textContent);
+        await navigator.clipboard.writeText(messageText.get(body));
         copy.setAttribute('aria-label', 'Response copied'); copy.title = 'Response copied';
         setTimeout(() => { copy.setAttribute('aria-label', 'Copy response'); copy.title = 'Copy response'; }, 1500);
       } catch { fail('Could not copy this response. Select its text and copy it manually.'); }
@@ -171,7 +185,7 @@ async function searchChats(offset = 0) {
         if (!await resume(chat.id, 'view')) return;
         if (![...$('chats').options].some(option => option.value === chat.id)) $('chats').append(new Option(chat.title, chat.id));
         $('chats').value = chat.id;
-        for (const body of $('messages').querySelectorAll('.body')) body.replaceChildren(highlight(body.textContent, query));
+        for (const body of $('messages').querySelectorAll('.body')) body.replaceChildren(highlight(messageText.get(body), query));
         historyMarks = [...$('messages').querySelectorAll('mark')]; matchIndex = -1; moveMatch(1);
       });
       $('searchResults').append(button);
@@ -211,16 +225,16 @@ function events(message) {
   }
   if (message.event === 'historyStart') { resetMessages(); return; }
   if (message.event === 'historyMessage') {
-    if (message.append) $('messages').lastElementChild.querySelector('.body').append(document.createTextNode(message.message.text));
+    if (message.append) { const body = $('messages').lastElementChild.querySelector('.body'); setMessageText(body, messageText.get(body) + message.message.text); }
     else appendMessage(message.message.role, message.message.text);
     return;
   }
   if (message.chatId !== current?.id) return;
   if (message.event === 'delta') {
     if (!assistantBody) assistantBody = appendMessage('assistant', '');
-    if (itemId && message.itemId !== itemId) assistantBody.append(document.createTextNode('\n\n'));
+    const separator = itemId && message.itemId !== itemId ? '\n\n' : '';
     itemId = message.itemId;
-    assistantBody.append(document.createTextNode(message.text));
+    setMessageText(assistantBody, messageText.get(assistantBody) + separator + message.text);
     $('messages').scrollTop = $('messages').scrollHeight;
   }
   if (message.event === 'activity') $('state').textContent = message.text;
