@@ -1,5 +1,13 @@
 # Task Ledger
 
+## Mini blank side-panel recovery — 2026-11-05
+
+State: Verified (local UI recovery). Owner: current troubleshooting chat. Acceptance: restore the reported blank Local Codex panel on the Mini and verify its controls load.
+
+Observed the actual Mini Chrome panel displaying its Local Codex header with no panel document or controls in the accessibility tree. Closed that blank panel using its close button and reopened it using the pinned Local Codex toolbar action. The panel then exposed its extension document, chat navigation, empty composer, tools/model/effort controls, Send and **Ready**. No draft was visible before closing; no prompt or page content was submitted. README now records this recovery step.
+
+Verification: actual normal-profile Chrome UI before/after inspection; final documentation diff and whitespace check. No product code or runtime configuration changed, so automated code tests were not rerun. Deployment: existing Mini installation recovered; no extension reload, browser restart, remote-Mac update or public release. Limitations: the initial blank state was observed but its root cause and recurrence trigger remain unconfirmed; inference was not tested. This does not establish activation of any previously pending UI updates.
+
 ### Markdown rendering and two-Mac rollout — 2026-11-02
 
 State: Verified (source installed on both Macs); Chrome activation pending. Owner: current repair chat. Acceptance: render assistant Markdown during streaming and saved-history restore, retain original copy/search text, prevent active HTML and remote image loading, package the renderer, and install on both requested Macs without disturbing settings or drafts.
